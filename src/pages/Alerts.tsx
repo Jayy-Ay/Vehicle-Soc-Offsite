@@ -14,18 +14,24 @@ export default function Alerts() {
   const [durationFilter, setDurationFilter] = React.useState<string | null>(null);
   const [showFilterMenu, setShowFilterMenu] = React.useState(false);
 
-  // Example duration filter logic: last 24h, last 7d, all
+  // Duration filter logic: 1h, 24h, 7d, 30d, all
   const filterByDuration = (alert: any) => {
     if (!durationFilter || durationFilter === "all") return true;
     const now = Date.now();
     const alertTime = new Date(alert.timestamp).getTime();
-    if (durationFilter === "24h") {
-      return now - alertTime <= 24 * 60 * 60 * 1000;
+    
+    switch (durationFilter) {
+      case "1h":
+        return now - alertTime <= 60 * 60 * 1000;
+      case "24h":
+        return now - alertTime <= 24 * 60 * 60 * 1000;
+      case "7d":
+        return now - alertTime <= 7 * 24 * 60 * 60 * 1000;
+      case "30d":
+        return now - alertTime <= 30 * 24 * 60 * 60 * 1000;
+      default:
+        return true;
     }
-    if (durationFilter === "7d") {
-      return now - alertTime <= 7 * 24 * 60 * 60 * 1000;
-    }
-    return true;
   };
 
   const filteredAlerts = alerts
@@ -35,6 +41,7 @@ export default function Alerts() {
   const highSeverity = filteredAlerts.filter(a => a.severity === 'high').length;
   const mediumSeverity = filteredAlerts.filter(a => a.severity === 'medium').length;
   const lowSeverity = filteredAlerts.filter(a => a.severity === 'low').length;
+  const benignSeverity = filteredAlerts.filter(a => a.severity === 'benign').length;
 
   return (
     <AppLayout>
@@ -56,7 +63,7 @@ export default function Alerts() {
         </div>
 
         {/* Alert Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
           <Card className="bg-gradient-surface border-border shadow-soc">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Alerts</CardTitle>
@@ -100,6 +107,17 @@ export default function Alerts() {
               <p className="text-xs text-muted-foreground">For review</p>
             </CardContent>
           </Card>
+
+          <Card className="bg-gradient-surface border-border shadow-soc">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Benign</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-muted-foreground">{benignSeverity}</div>
+              <p className="text-xs text-muted-foreground">No action needed</p>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Alerts List */}
@@ -135,6 +153,7 @@ export default function Alerts() {
                           <option value="high">High</option>
                           <option value="medium">Medium</option>
                           <option value="low">Low</option>
+                          <option value="benign">Benign</option>
                         </select>
                       </div>
                       <div>
@@ -145,13 +164,22 @@ export default function Alerts() {
                           onChange={e => setDurationFilter(e.target.value || null)}
                         >
                           <option value="all">All</option>
-                          <option value="24h">Last 24 hours</option>
-                          <option value="7d">Last 7 days</option>
+                          <option value="1h">Last Hour</option>
+                          <option value="24h">Last 24 Hours</option>
+                          <option value="7d">Last 7 Days</option>
+                          <option value="30d">Last 30 Days</option>
                         </select>
                       </div>
                       <div className="flex justify-end mt-4">
-                        <Button size="sm" variant="secondary" onClick={() => setShowFilterMenu(false)}>
-                          Close
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => {
+                            setSeverityFilter(null);
+                            setDurationFilter(null);
+                          }}
+                        >
+                          Clear All
                         </Button>
                       </div>
                     </div>

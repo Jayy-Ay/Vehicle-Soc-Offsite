@@ -32,7 +32,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useVehicles } from "@/hooks/api/useVehicles";
 import { useAlerts } from "@/hooks/api/useAlerts";
 
@@ -100,41 +99,24 @@ export function SOCSidebar() {
             <SidebarMenu>
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={item.isActive}
-                        className="w-full justify-start"
-                      >
-                        <a href={item.url} className="flex items-center gap-2">
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.title}</span>
-                          {item.badge && state === "expanded" && (
-                            <Badge 
-                              variant={item.title === "Security Alerts" ? "destructive" : "secondary"} 
-                              className="ml-auto text-xs"
-                            >
-                              {item.badge}
-                            </Badge>
-                          )}
-                        </a>
-                      </SidebarMenuButton>
-                    </TooltipTrigger>
-                    {state === "collapsed" && (
-                      <TooltipContent side="right" className="flex items-center gap-4">
-                        {item.title}
-                        {item.badge && (
-                          <Badge 
-                            variant={item.title === "Security Alerts" ? "destructive" : "secondary"} 
-                            className="text-xs"
-                          >
-                            {item.badge}
-                          </Badge>
-                        )}
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={item.isActive}
+                    className="w-full justify-start"
+                  >
+                    <a href={item.url} className="flex items-center gap-2">
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                      {item.badge && state === "expanded" && (
+                        <Badge 
+                          variant={item.title === "Security Alerts" ? "destructive" : "secondary"} 
+                          className="ml-auto text-xs"
+                        >
+                          {item.badge}
+                        </Badge>
+                      )}
+                    </a>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
@@ -147,21 +129,12 @@ export function SOCSidebar() {
             <SidebarMenu>
               {adminItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <SidebarMenuButton asChild>
-                        <a href={item.url} className="flex items-center gap-2">
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.title}</span>
-                        </a>
-                      </SidebarMenuButton>
-                    </TooltipTrigger>
-                    {state === "collapsed" && (
-                      <TooltipContent side="right">
-                        {item.title}
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
+                  <SidebarMenuButton asChild>
+                    <a href={item.url} className="flex items-center gap-2">
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.title}</span>
+                    </a>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

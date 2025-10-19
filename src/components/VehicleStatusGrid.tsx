@@ -21,6 +21,7 @@ import type { Database } from "@/lib/database.types";
 
 interface VehicleStatusGridProps {
   layout?: "single" | "grid";
+  vehicles?: Vehicle[];
 }
 
 type Vehicle = Database['public']['Tables']['vehicles']['Row'];
@@ -61,8 +62,9 @@ const getStatusBadge = (status: VehicleStatus["teeStatus"]) => {
   }
 };
 
-export const VehicleStatusGrid = ({ layout = "grid" }: VehicleStatusGridProps) => {
-  const { data: vehicles, isLoading, error } = useVehicles();
+export const VehicleStatusGrid = ({ layout = "grid", vehicles: propVehicles }: VehicleStatusGridProps) => {
+  const { data: fetchedVehicles, isLoading, error } = useVehicles();
+  const vehicles = propVehicles || fetchedVehicles;
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
