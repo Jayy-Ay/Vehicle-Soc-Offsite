@@ -103,45 +103,50 @@ const getStatusBadge = (status: Alert["status"]) => {
   }
 };
 
-export const AlertsGrid = () => {
+export const AlertsGrid = ({ alerts }: { alerts?: Alert[] }) => {
+  const displayAlerts = alerts ?? mockAlerts;
   return (
     <div className="space-y-4">
-      {mockAlerts.map((alert) => (
-        <div
-          key={alert.id}
-          className="p-4 rounded-lg border border-border bg-card/50 hover:bg-card/70 transition-colors"
-        >
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3">
-              {getSeverityIcon(alert.severity)}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-semibold">{alert.title}</h4>
-                  {getSeverityBadge(alert.severity)}
-                </div>
-                <p className="text-sm text-muted-foreground">{alert.description}</p>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Bug className="h-3 w-3" />
-                    {alert.vehicleId}
-                  </span>
-                  <span>TEE: {alert.teeId}</span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {alert.timestamp}
-                  </span>
+      {displayAlerts.length === 0 ? (
+        <div className="text-center text-muted-foreground py-8">No alerts found.</div>
+      ) : (
+        displayAlerts.map((alert) => (
+          <div
+            key={alert.id}
+            className="p-4 rounded-lg border border-border bg-card/50 hover:bg-card/70 transition-colors"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-3">
+                {getSeverityIcon(alert.severity)}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-semibold">{alert.title}</h4>
+                    {getSeverityBadge(alert.severity)}
+                  </div>
+                  <p className="text-sm text-muted-foreground">{alert.description}</p>
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Bug className="h-3 w-3" />
+                      {alert.vehicleId}
+                    </span>
+                    <span>TEE: {alert.teeId}</span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {alert.timestamp}
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {getStatusBadge(alert.status)}
-              <Button variant="outline" size="sm">
-                Investigate
-              </Button>
+              <div className="flex items-center gap-2">
+                {getStatusBadge(alert.status)}
+                <Button variant="outline" size="sm">
+                  Investigate
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   );
 };

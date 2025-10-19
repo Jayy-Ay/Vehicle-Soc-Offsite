@@ -11,7 +11,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { Database } from "@/lib/database.types";
+
+interface VehicleStatusGridProps {
+  layout?: "single" | "grid";
+}
 
 type Vehicle = Database['public']['Tables']['vehicles']['Row'];
 
@@ -51,7 +61,7 @@ const getStatusBadge = (status: VehicleStatus["teeStatus"]) => {
   }
 };
 
-export const VehicleStatusGrid = () => {
+export const VehicleStatusGrid = ({ layout = "grid" }: VehicleStatusGridProps) => {
   const { data: vehicles, isLoading, error } = useVehicles();
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -95,49 +105,61 @@ export const VehicleStatusGrid = () => {
     );
   }
 
+  const containerClass = layout === "single" 
+    ? "space-y-4" 
+    : "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4";
+
   return (
     <>
-      <div className="space-y-4">
-        {vehicles.map((vehicle) => {
-          const lastUpdate = formatDistanceToNow(new Date(vehicle.last_update), { addSuffix: true });
-          
-          return (
-            <div
-              key={vehicle.id}
-              className="p-4 rounded-lg border border-border bg-card/50 hover:bg-card/70 transition-colors cursor-pointer"
-              onClick={() => handleDetailsClick(vehicle)}
-            >
-              <div className="flex items-start justify-between gap-4">
-                {/* Left side content */}
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Car className="h-4 w-4 text-muted-foreground" />
-                    <h4 className="text-sm font-semibold">{vehicle.vehicle_id}</h4>
-                  </div>
-                  
-                  <div className="text-xs text-muted-foreground">{vehicle.location}</div>
-                  
-                  <div className="text-xs text-muted-foreground pt-2 border-t border-border/50">
-                    {lastUpdate}
-                  </div>
-                </div>
+      <TooltipProvider>
+        <div className={containerClass}>
+          {vehicles.map((vehicle) => {
+            const lastUpdate = formatDistanceToNow(new Date(vehicle.last_update), { addSuffix: true });
+            
+            return (
+              <Tooltip key={vehicle.id}>
+                <TooltipTrigger asChild>
+                  <div
+                    className="p-4 rounded-lg border border-border bg-card/50 hover:bg-card/70 hover:border-primary hover:shadow-lg hover:scale-105 transition-all duration-200 cursor-pointer"
+                    onClick={() => handleDetailsClick(vehicle)}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      {/* Left side content */}
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Car className="h-4 w-4 text-muted-foreground" />
+                          <h4 className="text-sm font-semibold">{vehicle.vehicle_id}</h4>
+                        </div>
+                        
+                        <div className="text-xs text-muted-foreground">{vehicle.location}</div>
+                        
+                        <div className="text-xs text-muted-foreground pt-2 border-t border-border/50">
+                          {lastUpdate}
+                        </div>
+                      </div>
 
-                {/* Right side column - aligned */}
-                <div className="flex flex-col items-end gap-3 min-w-[100px]">
-                  {getStatusBadge(vehicle.tee_status)}
-                  
-                  <div className="flex items-center gap-1 mr-2">
-                    {getStatusIcon(vehicle.tee_status)}
-                    <span className="text-xs font-medium">
-                      {vehicle.tee_secure}/{vehicle.tee_total}
-                    </span>
+                      {/* Right side column - aligned */}
+                      <div className="flex flex-col items-end gap-3 min-w-[100px]">
+                        {getStatusBadge(vehicle.tee_status)}
+                        
+                        <div className="flex items-center gap-1 mr-2">
+                          {getStatusIcon(vehicle.tee_status)}
+                          <span className="text-xs font-medium">
+                            {vehicle.tee_secure}/{vehicle.tee_total}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>See more</p>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </TooltipProvider>
 
       {/* Vehicle Details Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
