@@ -10,6 +10,7 @@ import { ThreatChart } from "./ThreatChart";
 import { SecurityPieChart } from "./SecurityPieChart";
 import { useVehicles } from "@/hooks/api/useVehicles";
 import { useAlerts } from "@/hooks/api/useAlerts";
+import { useCountUp } from "@/hooks/useCountUp";
 
 export const SOCDashboard = () => {
   const { data: vehicles } = useVehicles();
@@ -40,8 +41,15 @@ export const SOCDashboard = () => {
   const criticalAlerts = filteredAlerts.filter(a => a.severity === 'high').length;
   const totalSecureTEEs = vehicles?.reduce((sum, v) => sum + v.tee_secure, 0) || 0;
   const totalTEEs = vehicles?.reduce((sum, v) => sum + v.tee_total, 0) || 0;
-  const securePercentage = totalTEEs > 0 ? ((totalSecureTEEs / totalTEEs) * 100).toFixed(1) : '0.0';
+  const securePercentage = totalTEEs > 0 ? ((totalSecureTEEs / totalTEEs) * 100) : 0;
   const activeVehicles = vehicles?.length || 0;
+
+  // Count-up animations for metrics
+  const criticalAlertsCount = useCountUp({ end: criticalAlerts, duration: 1200 });
+  const secureTEEsCount = useCountUp({ end: totalSecureTEEs, duration: 1500 });
+  const activeVehiclesCount = useCountUp({ end: activeVehicles, duration: 1000 });
+  const totalAlertsCount = useCountUp({ end: filteredAlerts.length, duration: 1300 });
+  const securePercentageCount = useCountUp({ end: securePercentage, duration: 1400, decimals: 1 });
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -82,7 +90,7 @@ export const SOCDashboard = () => {
             <AlertTriangle className="h-3 w-3 md:h-4 md:w-4 text-critical" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl md:text-2xl font-bold text-critical">{criticalAlerts}</div>
+            <div className="text-xl md:text-2xl font-bold text-critical">{criticalAlertsCount.value}</div>
             <p className="text-[10px] md:text-xs text-muted-foreground">High severity</p>
           </CardContent>
         </Card>
@@ -93,8 +101,8 @@ export const SOCDashboard = () => {
             <Shield className="h-3 w-3 md:h-4 md:w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl md:text-2xl font-bold text-success">{totalSecureTEEs}</div>
-            <p className="text-[10px] md:text-xs text-muted-foreground">{securePercentage}% operational</p>
+            <div className="text-xl md:text-2xl font-bold text-success">{secureTEEsCount.value.toLocaleString()}</div>
+            <p className="text-[10px] md:text-xs text-muted-foreground">{securePercentageCount.value}% operational</p>
           </CardContent>
         </Card>
 
@@ -104,7 +112,7 @@ export const SOCDashboard = () => {
             <Car className="h-3 w-3 md:h-4 md:w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl md:text-2xl font-bold text-primary">{activeVehicles}</div>
+            <div className="text-xl md:text-2xl font-bold text-primary">{activeVehiclesCount.value}</div>
             <p className="text-[10px] md:text-xs text-muted-foreground">Fleet online</p>
           </CardContent>
         </Card>
@@ -115,7 +123,7 @@ export const SOCDashboard = () => {
             <Activity className="h-3 w-3 md:h-4 md:w-4 text-warning" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl md:text-2xl font-bold text-warning">{filteredAlerts.length}</div>
+            <div className="text-xl md:text-2xl font-bold text-warning">{totalAlertsCount.value}</div>
             <p className="text-[10px] md:text-xs text-muted-foreground">All severities</p>
           </CardContent>
         </Card>
@@ -199,7 +207,7 @@ export const SOCDashboard = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <AlertsGrid alerts={filteredAlerts} />
+              <AlertsGrid alerts={filteredAlerts} simplified />
             </CardContent>
           </Card>
         </div>

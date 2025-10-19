@@ -2,6 +2,34 @@ import { AlertTriangle, Shield, Zap, Bug, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
+// Format timestamp to human readable format
+const formatTimestamp = (timestamp: string) => {
+  // If it's already in relative format (like "2 min ago"), return as-is
+  if (timestamp.includes("ago") || timestamp.includes("min") || timestamp.includes("hour")) {
+    return timestamp;
+  }
+  
+  // If it's an ISO timestamp, convert it
+  try {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+    
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes} min ago`;
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+    } else {
+      return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+    }
+  } catch (error) {
+    return timestamp; // Return original if parsing fails
+  }
+};
+
 interface Alert {
   id: string;
   severity: "high" | "medium" | "low" | "benign";
@@ -103,8 +131,56 @@ const getStatusBadge = (status: Alert["status"]) => {
   }
 };
 
-export const AlertsGrid = ({ alerts }: { alerts?: Alert[] }) => {
+export const AlertsGrid = ({ alerts, simplified = false }: { alerts?: Alert[], simplified?: boolean }) => {
   const displayAlerts = alerts ?? mockAlerts;
+  
+  if (simplified) {
+    // Simplified version for dashboard - show only top 5 alerts
+    const topAlerts = displayAlerts.slice(0, 5);
+    
+    return (
+      <div className="space-y-2">
+        {topAlerts.length === 0 ? (
+          <div className="text-center text-muted-foreground py-4">No alerts found.</div>
+        ) : (
+          topAlerts.map((alert) => (
+            <div
+              key={alert.id}
+              className="p-3 rounded-lg border border-border bg-card/30 hover:bg-card/50 transition-colors"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  {getSeverityIcon(alert.severity)}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-medium truncate">{alert.title}</h4>
+                    <div className="flex items-center text-xs text-muted-foreground mt-1">
+                      <span>{alert.vehicleId}</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {formatTimestamp(alert.timestamp)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex-shrink-0">
+                  {getSeverityBadge(alert.severity)}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+        {displayAlerts.length > 5 && (
+          <div className="text-center pt-2">
+            <p className="text-xs text-muted-foreground">
+              +{displayAlerts.length - 5} more alerts
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // Full version for dedicated alerts page
   return (
     <div className="space-y-4">
       {displayAlerts.length === 0 ? (
@@ -124,15 +200,15 @@ export const AlertsGrid = ({ alerts }: { alerts?: Alert[] }) => {
                     {getSeverityBadge(alert.severity)}
                   </div>
                   <p className="text-sm text-muted-foreground">{alert.description}</p>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Bug className="h-3 w-3" />
                       {alert.vehicleId}
                     </span>
-                    <span>TEE: {alert.teeId}</span>
+                    {alert.teeId && <span>TEE: {alert.teeId}</span>}
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      {alert.timestamp}
+                      {formatTimestamp(alert.timestamp)}
                     </span>
                   </div>
                 </div>

@@ -1,4 +1,4 @@
-import { Car, Shield, AlertTriangle, CheckCircle, Calendar, MapPin, Activity } from "lucide-react";
+import { Car, Shield, AlertTriangle, CheckCircle, Calendar, MapPin, Activity, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useVehicles } from "@/hooks/api/useVehicles";
@@ -115,6 +115,8 @@ export const VehicleStatusGrid = ({ layout = "grid" }: VehicleStatusGridProps) =
         <div className={containerClass}>
           {vehicles.map((vehicle) => {
             const lastUpdate = formatDistanceToNow(new Date(vehicle.last_update), { addSuffix: true });
+            // Remove "about" prefix if present
+            const cleanedUpdate = lastUpdate.replace(/^about\s+/, '');
             
             return (
               <Tooltip key={vehicle.id}>
@@ -134,7 +136,10 @@ export const VehicleStatusGrid = ({ layout = "grid" }: VehicleStatusGridProps) =
                         <div className="text-xs text-muted-foreground">{vehicle.location}</div>
                         
                         <div className="text-xs text-muted-foreground pt-2 border-t border-border/50">
-                          {lastUpdate}
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {cleanedUpdate}
+                          </div>
                         </div>
                       </div>
 
