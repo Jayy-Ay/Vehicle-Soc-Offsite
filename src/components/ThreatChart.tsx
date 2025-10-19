@@ -17,76 +17,78 @@ const mockData = [
 
 export const ThreatChart = () => {
   return (
-    <div className="h-[300px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={mockData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-          <defs>
-            <linearGradient id="criticalGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(0 84% 60%)" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="hsl(0 84% 60%)" stopOpacity={0.1} />
-            </linearGradient>
-            <linearGradient id="warningGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(38 92% 50%)" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="hsl(38 92% 50%)" stopOpacity={0.1} />
-            </linearGradient>
-            <linearGradient id="infoGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(217 91% 60%)" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="hsl(217 91% 60%)" stopOpacity={0.1} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 15% 20%)" />
-          <XAxis 
-            dataKey="time" 
-            stroke="hsl(215 20% 65%)"
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-          />
-          <YAxis 
-            stroke="hsl(215 20% 65%)"
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-          />
-          <Area
-            type="monotone"
-            dataKey="critical"
-            stackId="1"
-            stroke="hsl(0 84% 60%)"
-            fill="url(#criticalGradient)"
-            strokeWidth={2}
-          />
-          <Area
-            type="monotone"
-            dataKey="warning"
-            stackId="1"
-            stroke="hsl(38 92% 50%)"
-            fill="url(#warningGradient)"
-            strokeWidth={2}
-          />
-          <Area
-            type="monotone"
-            dataKey="info"
-            stackId="1"
-            stroke="hsl(217 91% 60%)"
-            fill="url(#infoGradient)"
-            strokeWidth={2}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+    <div className="w-full space-y-4">
+      <div className="h-[280px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={mockData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="criticalGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="hsl(0 84% 60%)" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="hsl(0 84% 60%)" stopOpacity={0.1} />
+              </linearGradient>
+              <linearGradient id="warningGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="hsl(38 92% 50%)" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="hsl(38 92% 50%)" stopOpacity={0.1} />
+              </linearGradient>
+              <linearGradient id="infoGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="hsl(217 91% 60%)" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="hsl(217 91% 60%)" stopOpacity={0.1} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 15% 20%)" />
+            <XAxis 
+              dataKey="time" 
+              stroke="hsl(215 20% 65%)"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis 
+              stroke="hsl(215 20% 65%)"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
+            <Area
+              type="monotone"
+              dataKey="critical"
+              stackId="1"
+              stroke="hsl(0 84% 60%)"
+              fill="url(#criticalGradient)"
+              strokeWidth={2}
+            />
+            <Area
+              type="monotone"
+              dataKey="warning"
+              stackId="1"
+              stroke="hsl(38 92% 50%)"
+              fill="url(#warningGradient)"
+              strokeWidth={2}
+            />
+            <Area
+              type="monotone"
+              dataKey="info"
+              stackId="1"
+              stroke="hsl(217 91% 60%)"
+              fill="url(#infoGradient)"
+              strokeWidth={2}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
       
-      <div className="flex justify-center gap-6 mt-4 text-xs">
+      <div className="flex justify-center gap-6 text-xs">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-critical" />
-          <span className="text-muted-foreground">Critical</span>
+          <span className="text-muted-foreground">High</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-warning" />
-          <span className="text-muted-foreground">Warning</span>
+          <span className="text-muted-foreground">Low</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-info" />
-          <span className="text-muted-foreground">Info</span>
+          <span className="text-muted-foreground">Benign</span>
         </div>
       </div>
     </div>

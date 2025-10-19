@@ -4,29 +4,29 @@ import { Button } from "@/components/ui/button";
 
 interface Alert {
   id: string;
-  severity: "critical" | "warning" | "info";
+  severity: "high" | "medium" | "low" | "benign";
   title: string;
   description: string;
   vehicleId: string;
   teeId: string;
   timestamp: string;
-  status: "active" | "investigating" | "resolved";
+  status: "pending" | "investigating" | "resolved";
 }
 
 const mockAlerts: Alert[] = [
   {
     id: "ALT-001",
-    severity: "critical",
+    severity: "high",
     title: "Unauthorized Memory Access Detected",
     description: "TEE integrity violation in vehicle ECU module",
     vehicleId: "VH-2847",
     teeId: "TEE-ECU-01",
     timestamp: "2 min ago",
-    status: "active"
+    status: "pending"
   },
   {
     id: "ALT-002", 
-    severity: "warning",
+    severity: "low",
     title: "Anomalous Network Traffic",
     description: "Unusual communication pattern from infotainment system",
     vehicleId: "VH-1923",
@@ -36,17 +36,17 @@ const mockAlerts: Alert[] = [
   },
   {
     id: "ALT-003",
-    severity: "critical",
+    severity: "high",
     title: "TEE Boot Sequence Anomaly",
     description: "Secure boot verification failed during startup",
     vehicleId: "VH-3456",
     teeId: "TEE-BOOT-01",
     timestamp: "8 min ago",
-    status: "active"
+    status: "pending"
   },
   {
     id: "ALT-004",
-    severity: "info",
+    severity: "benign",
     title: "Security Update Available",
     description: "New firmware available for TEE security module",
     vehicleId: "VH-7890",
@@ -56,7 +56,7 @@ const mockAlerts: Alert[] = [
   },
   {
     id: "ALT-005",
-    severity: "warning",
+    severity: "low",
     title: "Suspicious Code Execution",
     description: "Unexpected process activity in secure environment",
     vehicleId: "VH-4521",
@@ -68,30 +68,34 @@ const mockAlerts: Alert[] = [
 
 const getSeverityIcon = (severity: Alert["severity"]) => {
   switch (severity) {
-    case "critical":
+    case "high":
       return <AlertTriangle className="h-4 w-4 text-critical" />;
-    case "warning":
+    case "medium":
       return <Zap className="h-4 w-4 text-warning" />;
-    case "info":
+    case "low":
+      return <Zap className="h-4 w-4 text-warning" />;
+    case "benign":
       return <Shield className="h-4 w-4 text-info" />;
   }
 };
 
 const getSeverityBadge = (severity: Alert["severity"]) => {
   switch (severity) {
-    case "critical":
-      return <Badge variant="destructive" className="bg-critical/20 text-critical border-critical">Critical</Badge>;
-    case "warning":
-      return <Badge className="bg-warning/20 text-warning border-warning">Warning</Badge>;
-    case "info":
-      return <Badge className="bg-info/20 text-info border-info">Info</Badge>;
+    case "high":
+      return <Badge variant="destructive" className="bg-critical/20 text-critical border-critical">High</Badge>;
+    case "medium":
+      return <Badge className="bg-warning/20 text-warning border-warning">Medium</Badge>;
+    case "low":
+      return <Badge className="bg-warning/20 text-warning border-warning">Low</Badge>;
+    case "benign":
+      return <Badge className="bg-info/20 text-info border-info">Benign</Badge>;
   }
 };
 
 const getStatusBadge = (status: Alert["status"]) => {
   switch (status) {
-    case "active":
-      return <Badge variant="outline" className="border-critical text-critical">Active</Badge>;
+    case "pending":
+      return <Badge variant="outline" className="border-muted-foreground text-muted-foreground">Pending</Badge>;
     case "investigating":
       return <Badge variant="outline" className="border-warning text-warning">Investigating</Badge>;
     case "resolved":
