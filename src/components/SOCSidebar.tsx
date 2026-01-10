@@ -38,7 +38,7 @@ import { useAlerts } from "@/hooks/api/useAlerts";
 
 const adminItems = [
   {
-    title: "LogQL Query",
+    title: "Query",
     url: "/query",
     icon: Terminal,
   },
@@ -61,10 +61,15 @@ export function SOCSidebar() {
 
   const navigationItems = [
     {
-      title: "Dashboard",
+      title: "Home",
       url: "/",
       icon: Home,
       isActive: true,
+    },
+    {
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: BarChart3,
     },
     {
       title: "Security Alerts",
