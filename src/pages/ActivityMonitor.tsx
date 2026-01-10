@@ -3,6 +3,7 @@ import { Activity, Clock, AlertTriangle, CheckCircle } from "lucide-react";
 import { useAlerts } from "@/hooks/api/useAlerts";
 import { useVehicles } from "@/hooks/api/useVehicles";
 import { Badge } from "@/components/ui/badge";
+import { AppLayout } from "@/components/AppLayout";
 import { formatDistanceToNow } from "date-fns";
 
 export default function ActivityMonitor() {

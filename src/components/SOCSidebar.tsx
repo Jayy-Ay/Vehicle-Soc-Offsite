@@ -8,7 +8,8 @@ import {
   Home,
   ChevronUp,
   User2,
-  LogOut
+  LogOut,
+  Terminal
 } from "lucide-react";
 
 import {
@@ -36,6 +37,11 @@ import { useVehicles } from "@/hooks/api/useVehicles";
 import { useAlerts } from "@/hooks/api/useAlerts";
 
 const adminItems = [
+  {
+    title: "LogQL Query",
+    url: "/query",
+    icon: Terminal,
+  },
   {
     title: "Settings",
     url: "/settings",
