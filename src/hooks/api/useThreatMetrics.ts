@@ -1,0 +1,24 @@
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabase'
+import type { Database } from '@/lib/database.types'
+
+type ThreatMetric = Database['public']['Tables']['threat_metrics']['Row']
+
+export const useThreatMetrics = (hours: number = 24) => {
+  return useQuery({
+    queryKey: ['threat-metrics', hours],
+    queryFn: async () => {
+      const startTime = new Date()
+      startTime.setHours(startTime.getHours() - hours)
+      
+      const { data, error } = await supabase
+        .from('threat_metrics')
+        .select('*')
+        .gte('timestamp', startTime.toISOString())
+        .order('timestamp', { ascending: true })
+      
+      if (error) throw error
+      return data as ThreatMetric[]
+    },
+  })
+}
