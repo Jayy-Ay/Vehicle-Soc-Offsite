@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
+import { parseLogQL } from "@/lib/LogQLParser";
 
 type Vehicle = Database['public']['Tables']['vehicles']['Row']
 
@@ -53,6 +54,14 @@ export const useUpdateVehicle = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vehicles'] })
+    },
+  })
+}
+
+export const parseLogQlMut = () => {
+  return useMutation({
+    mutationFn: async (input: string) => {
+      return (await parseLogQL(supabase, input)) as Vehicle[]
     },
   })
 }

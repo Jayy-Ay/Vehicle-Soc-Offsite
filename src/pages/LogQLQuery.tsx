@@ -21,6 +21,9 @@ import {
 import { supabase } from '@/lib/supabase';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import type { Database as db } from "@/lib/database.types";
+import { VehiclesTable } from "@/components/QueryTable";
+import { parseLogQlMut } from "@/hooks/api/useVehicles";
 
 // Database configuration
 const DATABASE_TYPE = 'PostgreSQL';
@@ -44,6 +47,9 @@ interface QueryResult {
 
 const LogQLQuery = () => {
   const [query, setQuery] = useState('');
+  const { mutateAsync } = parseLogQlMut();
+  type Vehicle = db['public']['Tables']['vehicles']['Row'];
+
   const [queryHistory, setQueryHistory] = useState<QueryResult[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [currentResult, setCurrentResult] = useState<QueryResult | null>(null);
@@ -151,14 +157,14 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
 
     try {
       // First, try to use the execute_sql function for raw SQL
-      const { data, error } = await supabase.rpc('execute_sql', { query_text: query });
+      const data = await mutateAsync(query);
       
       const executionTime = Date.now() - startTime;
       const result: QueryResult = {
         id: Date.now().toString(),
         query,
         result: data || [],
-        error: error?.message,
+        error: undefined,
         executedAt: new Date(),
         executionTime
       };
@@ -212,7 +218,7 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
               Advanced SQL Query
             </h1>
             <p className="text-muted-foreground">
-              Write SQL to query specific data with advanced database querying
+              Write LogQL to query specific data with advanced database querying
             </p>
           </div>
           <Badge variant="outline" className="flex items-center gap-1">
@@ -230,7 +236,7 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
               <CardContent className="space-y-4 pt-6">
                 <div className="space-y-2">
                   <Textarea
-                    placeholder="Enter your SQL query here..."
+                    placeholder="e.g tee_status secure"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     className="font-mono text-sm min-h-[200px] bg-muted/50"
@@ -291,10 +297,10 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
                       <AlertDescription>{currentResult.error}</AlertDescription>
                     </Alert>
                   ) : (
-                    <ScrollArea className="h-[400px]">
-                      <pre className="text-xs bg-muted/50 p-4 rounded-md overflow-x-auto">
-                        {formatResultForDisplay(currentResult.result)}
-                      </pre>
+                    <ScrollArea className="max-h-[400px] w-full">
+                      <div className="min-w-[900px]">
+                        <VehiclesTable vehicles = {currentResult.result as Vehicle[]} />
+                      </div>
                     </ScrollArea>
                   )}
                 </CardContent>
@@ -497,5 +503,5 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
     </AppLayout>
   );
 };
-
+/* do it for the other schemas too. then change examples to logQL examples */
 export default LogQLQuery;
