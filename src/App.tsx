@@ -11,6 +11,7 @@ import TEESecurity from "./pages/TEESecurity";
 import Analytics from "./pages/Analytics";
 import ActivityMonitor from "./pages/ActivityMonitor";
 import Settings from "./pages/Settings";
+import Login from "./components/Login";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/analytics" element={<Analytics />} />
           <Route path="/activity" element={<ActivityMonitor />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/login" element={<Login />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
