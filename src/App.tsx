@@ -13,7 +13,12 @@ import TEESecurity from "./pages/TEESecurity";
 import Analytics from "./pages/Analytics";
 import ActivityMonitor from "./pages/ActivityMonitor";
 import Settings from "./pages/Settings";
+<<<<<<< HEAD
 import LogQLQuery from "./pages/LogQLQuery";
+import Login from "./components/Login";
+=======
+import Login from "./components/Login";
+>>>>>>> 7c82919e33709f1cc445ae8b3dc3db5b0c4a6f4f
 
 const queryClient = new QueryClient();
 
@@ -33,6 +38,7 @@ const App = () => (
           <Route path="/activity" element={<ActivityMonitor />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/query" element={<LogQLQuery />} />
+          <Route path="/login" element={<Login />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
