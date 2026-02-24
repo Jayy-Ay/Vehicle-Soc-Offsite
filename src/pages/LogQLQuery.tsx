@@ -22,7 +22,7 @@ import { supabase } from '@/lib/supabase';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Database as db } from "@/lib/database.types";
-import { VehiclesTable } from "@/components/QueryTable";
+import { VehiclesTable, AlertsTable, ThreatsTable } from "@/components/QueryTable";
 import { parseLogQlMut } from "@/hooks/api/useVehicles";
 
 // Database configuration
@@ -36,19 +36,38 @@ const DATABASE_SCHEMA = [
   { table: 'threat_metrics', description: 'Historical threat data' },
 ];
 
+type TableName = "vehicles" | "alerts" | "threat_metrics"
+
 interface QueryResult {
   id: string;
   query: string;
+  table: TableName
   result: any[];
   error?: string;
   executedAt: Date;
   executionTime: number;
 }
 
+function ResultTable({ table, rows, }: { table: "vehicles" | "alerts" | "threat_metrics" ; rows: any[] }) {
+  switch (table) {
+    case "vehicles":
+      return <VehiclesTable vehicles={rows} />
+    case "alerts":
+      return <AlertsTable alerts={rows} />
+    case "threat_metrics":
+      return <ThreatsTable threats={rows} />
+    default:
+      return (
+        <div className="text-sm text-muted-foreground p-4">
+          No table renderer for "{table}"
+        </div>
+      )
+  }
+}
+
 const LogQLQuery = () => {
   const [query, setQuery] = useState('');
   const { mutateAsync } = parseLogQlMut();
-  type Vehicle = db['public']['Tables']['vehicles']['Row'];
 
   const [queryHistory, setQueryHistory] = useState<QueryResult[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
@@ -157,12 +176,13 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
 
     try {
       // First, try to use the execute_sql function for raw SQL
-      const data = await mutateAsync(query);
+      const { table, data } = await mutateAsync(query);
       
       const executionTime = Date.now() - startTime;
       const result: QueryResult = {
         id: Date.now().toString(),
         query,
+        table: table as TableName,
         result: data || [],
         error: undefined,
         executedAt: new Date(),
@@ -176,6 +196,7 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
       const result: QueryResult = {
         id: Date.now().toString(),
         query,
+        table: "vehicles",
         result: [],
         error: err instanceof Error ? err.message : 'Unknown error occurred. Make sure the execute_sql function is created in your database.',
         executedAt: new Date(),
@@ -218,7 +239,8 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
               Advanced SQL Query
             </h1>
             <p className="text-muted-foreground">
-              Write LogQL to query specific data with advanced database querying
+              Write LogQL to query specific data with advanced database querying <br />
+              [TABLE] [FIELD] [VALUE]
             </p>
           </div>
           <Badge variant="outline" className="flex items-center gap-1">
@@ -236,7 +258,7 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
               <CardContent className="space-y-4 pt-6">
                 <div className="space-y-2">
                   <Textarea
-                    placeholder="e.g tee_status secure"
+                    placeholder="e.g vehicles tee_status secure"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     className="font-mono text-sm min-h-[200px] bg-muted/50"
@@ -299,7 +321,7 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
                   ) : (
                     <ScrollArea className="max-h-[400px] w-full">
                       <div className="min-w-[900px]">
-                        <VehiclesTable vehicles = {currentResult.result as Vehicle[]} />
+                        <ResultTable table={currentResult.table} rows={currentResult.result}/>
                       </div>
                     </ScrollArea>
                   )}
