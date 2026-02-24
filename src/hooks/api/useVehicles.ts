@@ -61,7 +61,7 @@ export const useUpdateVehicle = () => {
 export const parseLogQlMut = () => {
   return useMutation({
     mutationFn: async (input: string) => {
-      return (await parseLogQL(supabase, input)) as Vehicle[]
+      return (await parseLogQL(supabase, input))
     },
   })
 }
