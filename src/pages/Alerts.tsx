@@ -6,16 +6,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, Filter, AlertTriangle } from "lucide-react";
 import { useAlerts } from "@/hooks/api/useAlerts";
+import { useLogQLTextQuery } from "@/hooks/api/useLogQLQuery";
 import { AppLayout } from "@/components/AppLayout";
+import type { Database } from "@/lib/database.types";
+import { LogQLParseError } from "@/lib/logql";
 
 export default function Alerts() {
   const { data: alerts } = useAlerts();
+  const logQLQuery = useLogQLTextQuery('alerts');
   const [severityFilter, setSeverityFilter] = React.useState<string | null>(null);
   const [durationFilter, setDurationFilter] = React.useState<string | null>(null);
   const [showFilterMenu, setShowFilterMenu] = React.useState(false);
+  const [queryText, setQueryText] = React.useState("");
+  const [logQLString, setLogQLString] = React.useState("");
+  const [queryError, setQueryError] = React.useState<string | null>(null);
+  const [queryResults, setQueryResults] = React.useState<Database['public']['Tables']['alerts']['Row'][] | null>(null);
 
   // Duration filter logic: 1h, 24h, 7d, 30d, all
-  const filterByDuration = (alert: any) => {
+  const filterByDuration = (alert: Database['public']['Tables']['alerts']['Row']) => {
     if (!durationFilter || durationFilter === "all") return true;
     const now = Date.now();
     const alertTime = new Date(alert.timestamp).getTime();
@@ -34,9 +42,32 @@ export default function Alerts() {
     }
   };
 
-  const filteredAlerts = alerts
-    ?.filter(a => (severityFilter ? a.severity === severityFilter : true))
-    .filter(filterByDuration) || [];
+  const baseAlerts = queryResults ?? alerts ?? [];
+
+  const filteredAlerts = baseAlerts
+    .filter((alert) => (severityFilter ? alert.severity === severityFilter : true))
+    .filter(filterByDuration);
+
+  const handleQuerySubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setQueryError(null);
+    setLogQLString("");
+
+    try {
+      const result = await logQLQuery.mutateAsync(queryText);
+      setQueryResults(result.rows);
+      setLogQLString(result.logql);
+    } catch (error) {
+      if (error instanceof LogQLParseError) {
+        setQueryError(error.message);
+      } else if (error instanceof Error) {
+        setQueryError(error.message);
+      } else {
+        setQueryError("Failed to execute query");
+      }
+      setQueryResults(null);
+    }
+  };
 
   const highSeverity = filteredAlerts.filter(a => a.severity === 'high').length;
   const mediumSeverity = filteredAlerts.filter(a => a.severity === 'medium').length;
@@ -54,13 +85,39 @@ export default function Alerts() {
               Monitor and manage security alerts across your vehicle fleet
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search alerts..." className="pl-9 w-80" />
-            </div>
-          </div>
         </div>
+
+        <form onSubmit={handleQuerySubmit} className="space-y-2">
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={'Ask in natural language (e.g., "show high alerts last 24 hours for VH-2847")'}
+                className="pl-9 w-full"
+                value={queryText}
+                onChange={(event) => setQueryText(event.target.value)}
+              />
+            </div>
+            <Button type="submit" disabled={logQLQuery.isPending}>
+              {logQLQuery.isPending ? 'Running…' : 'Run query'}
+            </Button>
+          </div>
+          {(logQLString || queryError) && (
+            <div className="text-xs flex items-start gap-2">
+              {logQLString && (
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-foreground">LogQL:</span>
+                  <code className="bg-muted px-2 py-1 rounded text-foreground">{logQLString}</code>
+                </div>
+              )}
+              {queryError && (
+                <span className="text-critical">
+                  {queryError}
+                </span>
+              )}
+            </div>
+          )}
+        </form>
 
         {/* Alert Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
