@@ -1,11 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
+import { mergeAlertsWithAnomalies, useGlobalAnomalyStream } from '@/hooks/useGlobalAnomalyStream'
 
 type Alert = Database['public']['Tables']['alerts']['Row']
 
 export const useAlerts = () => {
-  return useQuery({
+  const { anomalies } = useGlobalAnomalyStream()
+
+  const query = useQuery({
     queryKey: ['alerts'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -17,6 +21,16 @@ export const useAlerts = () => {
       return data as Alert[]
     },
   })
+
+  const data = useMemo(
+    () => mergeAlertsWithAnomalies(query.data, anomalies),
+    [query.data, anomalies],
+  )
+
+  return {
+    ...query,
+    data,
+  }
 }
 
 export const useAlert = (alertId: string) => {

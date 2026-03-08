@@ -30,7 +30,7 @@ export default function AIModelMonitoring() {
     useAIMonitoringSimulation();
 
   const chartData = [...weights]
-    .slice(0, 8)
+    .slice(0, 15)
     .reverse()
     .map((w) => ({
       time: w.timestamp,
@@ -57,9 +57,6 @@ export default function AIModelMonitoring() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline" className="border-primary/50 text-primary">
-              Live simulation
-            </Badge>
             <Badge variant="secondary">Version {latestWeights.version}</Badge>
             <Badge variant={activeRun ? "default" : "outline"} className="flex items-center gap-1">
               <Sparkles className="h-3.5 w-3.5" />
@@ -123,19 +120,14 @@ export default function AIModelMonitoring() {
         <div className="grid gap-4 lg:grid-cols-3">
           <Card className="lg:col-span-2 bg-gradient-surface border-border shadow-soc">
             <CardHeader className="flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <CardTitle>Weight trajectories</CardTitle>
-                <Badge variant="outline" className="text-xs">
-                  Live updates
-                </Badge>
-              </div>
+              <CardTitle>Weight trajectories</CardTitle>
               <CardDescription>
                 Mock weight deltas applied after each anomaly replay to harden the detection model.
               </CardDescription>
             </CardHeader>
             <CardContent className="h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ left: -16, right: 12 }}>
+                <AreaChart data={chartData} margin={{ left: 8, right: 12, bottom: 8 }}>
                   <defs>
                     <linearGradient id="sens" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="hsl(25 95% 53%)" stopOpacity={0.32} />
@@ -155,13 +147,25 @@ export default function AIModelMonitoring() {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220 15% 20%)" />
-                  <XAxis dataKey="time" stroke="hsl(215 20% 65%)" tickLine={false} axisLine={false} />
+                  <XAxis
+                    dataKey="time"
+                    stroke="hsl(215 20% 65%)"
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    minTickGap={0}
+                    tickMargin={8}
+                    angle={-35}
+                    textAnchor="end"
+                    height={56}
+                    tickFormatter={(value) => String(value).slice(3)}
+                  />
                   <YAxis
                     stroke="hsl(215 20% 65%)"
                     tickFormatter={(value) => `${value}%`}
                     tickLine={false}
                     axisLine={false}
-                    width={40}
+                    width={56}
                   />
                   <Tooltip
                     formatter={(value: number) => `${value}%`}
@@ -292,17 +296,17 @@ export default function AIModelMonitoring() {
           </Card>
 
           <Card className="bg-gradient-surface border-border shadow-soc">
-            <CardHeader className="flex items-center justify-between">
-              <div>
+            <CardHeader className="space-y-2">
+              <div className="flex items-start justify-between gap-2">
                 <CardTitle>Model update timeline</CardTitle>
-                <CardDescription>
-                  Weight adjustments captured per anomaly replay with clear, versioned deltas.
-                </CardDescription>
+                <Badge variant="outline" className="flex shrink-0 items-center gap-1">
+                  <Layers className="h-4 w-4" />
+                  PRL - Rollback ready
+                </Badge>
               </div>
-              <Badge variant="outline" className="flex items-center gap-1">
-                <Layers className="h-4 w-4" />
-                Rollback ready
-              </Badge>
+              <CardDescription>
+                Weight adjustments captured per anomaly replay with clear, versioned deltas.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {updates.map((update) => (

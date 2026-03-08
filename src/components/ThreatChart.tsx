@@ -1,11 +1,18 @@
-import React, { useState, useMemo } from "react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Area, AreaChart } from "recharts";
+import { useMemo, useState } from "react";
+import { XAxis, YAxis, CartesianGrid, ResponsiveContainer, Area, AreaChart } from "recharts";
 import { Button } from "@/components/ui/button";
-import { format, subDays, subHours, subMonths, subYears } from "date-fns";
+import { type GlobalAnomalyEvent, useGlobalAnomalyStream } from "@/hooks/useGlobalAnomalyStream";
 
 interface ThreatChartProps {
   timeFilter?: "1h" | "24h" | "7d" | "30d" | "1y";
 }
+
+type ThreatPoint = {
+  time: string;
+  critical: number;
+  warning: number;
+  info: number;
+};
 
 const TIME_FILTERS = [
   { key: "1h", label: "1H", description: "Last hour" },
@@ -16,7 +23,7 @@ const TIME_FILTERS = [
 ] as const;
 
 // Mock data for different time periods
-const mockDataSets = {
+const mockDataSets: Record<(typeof TIME_FILTERS)[number]["key"], ThreatPoint[]> = {
   "1h": [
     { time: "13:00", critical: 1, warning: 3, info: 5 },
     { time: "13:10", critical: 2, warning: 2, info: 4 },
@@ -71,12 +78,56 @@ const mockDataSets = {
   ],
 };
 
+const hashId = (value: string) => {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+};
+
+const applyAnomalyOverlay = (baseData: ThreatPoint[], anomalies: GlobalAnomalyEvent[]) => {
+  if (baseData.length === 0 || anomalies.length === 0) {
+    return baseData;
+  }
+
+  const points = baseData.map((point) => ({ ...point }));
+
+  for (const [index, anomaly] of anomalies.slice(0, 24).entries()) {
+    const primaryIndex = hashId(`${anomaly.id}-${anomaly.timestamp}`) % points.length;
+    const adjacentIndex = (primaryIndex + points.length - 1 - (index % 2)) % points.length;
+    const intensity = anomaly.severity === "critical" ? 3 : anomaly.severity === "high" ? 2 : 1;
+
+    if (anomaly.severity === "critical") {
+      points[primaryIndex].critical += 2 * intensity;
+      points[primaryIndex].warning += intensity;
+      points[adjacentIndex].warning += intensity;
+    } else if (anomaly.severity === "high") {
+      points[primaryIndex].critical += intensity;
+      points[primaryIndex].warning += 2 * intensity;
+      points[adjacentIndex].warning += intensity;
+      points[adjacentIndex].info += intensity;
+    } else {
+      points[primaryIndex].warning += intensity;
+      points[primaryIndex].info += 2 * intensity;
+      points[adjacentIndex].info += intensity;
+    }
+  }
+
+  return points;
+};
+
 export const ThreatChart = ({ timeFilter: propTimeFilter }: ThreatChartProps) => {
-  const [selectedTimeFilter, setSelectedTimeFilter] = useState<string>(propTimeFilter || "24h");
+  const { anomalies } = useGlobalAnomalyStream();
+  const [selectedTimeFilter, setSelectedTimeFilter] = useState<(typeof TIME_FILTERS)[number]["key"]>(
+    propTimeFilter || "24h",
+  );
 
   const chartData = useMemo(() => {
-    return mockDataSets[selectedTimeFilter as keyof typeof mockDataSets] || mockDataSets["24h"];
-  }, [selectedTimeFilter]);
+    const base = mockDataSets[selectedTimeFilter] || mockDataSets["24h"];
+    return applyAnomalyOverlay(base, anomalies);
+  }, [selectedTimeFilter, anomalies]);
 
   return (
     <div className="w-full space-y-4">

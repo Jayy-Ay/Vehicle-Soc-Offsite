@@ -1,11 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/database.types'
+import { mergeVehiclesWithAnomalies, useGlobalAnomalyStream } from '@/hooks/useGlobalAnomalyStream'
 
 type Vehicle = Database['public']['Tables']['vehicles']['Row']
 
 export const useVehicles = () => {
-  return useQuery({
+  const { anomalies } = useGlobalAnomalyStream()
+
+  const query = useQuery({
     queryKey: ['vehicles'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -17,6 +21,16 @@ export const useVehicles = () => {
       return data as Vehicle[]
     },
   })
+
+  const data = useMemo(
+    () => mergeVehiclesWithAnomalies(query.data, anomalies),
+    [query.data, anomalies],
+  )
+
+  return {
+    ...query,
+    data,
+  }
 }
 
 export const useVehicle = (vehicleId: string) => {

@@ -15,6 +15,7 @@ import ActivityMonitor from "./pages/ActivityMonitor";
 import Settings from "./pages/Settings";
 import Login from "./components/Login";
 import AIModelMonitoring from "./pages/AIModelMonitoring";
+import { GlobalAnomalyRuntime } from "./components/GlobalAnomalyRuntime";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner position="bottom-right" />
+        <GlobalAnomalyRuntime />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />

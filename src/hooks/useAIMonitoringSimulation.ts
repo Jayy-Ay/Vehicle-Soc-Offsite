@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
-import { toast } from "@/components/ui/sonner";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
+import { type GlobalAnomalyEvent, useGlobalAnomalyStream } from "@/hooks/useGlobalAnomalyStream";
 
 type Severity = "critical" | "high" | "medium";
 type AnomalyStatus = "triaging" | "contained" | "mitigated";
@@ -43,40 +43,10 @@ export interface WeightSnapshot {
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
-const anomalyTemplates: Omit<AnomalyEvent, "id" | "timestamp" | "status">[] = [
-  {
-    source: "Vehicle-24 | CAN Bus",
-    vector: "Spoofed braking frames with jitter",
-    severity: "critical",
-    confidence: 0.91,
-    description: "Detected burst of forged CAN frames attempting to override braking priority and disable collision assists.",
-    remediation: "Isolated bus segment, replay-protected frames, and raised braking override threshold until validation completes.",
-  },
-  {
-    source: "Vehicle-08 | OTA",
-    vector: "Unusual firmware delta",
-    severity: "high",
-    confidence: 0.82,
-    description: "Unsigned OTA delta attempted to modify sensor fusion parameters outside normal deployment window.",
-    remediation: "OTA channel locked, device certificates revalidated, and rollout paused pending manual approval.",
-  },
-  {
-    source: "Vehicle-17 | TEE",
-    vector: "Side-channel timing drift",
-    severity: "medium",
-    confidence: 0.74,
-    description: "TEE enclave exhibited timing drift consistent with cache probe, affecting anomaly classifier execution.",
-    remediation: "Rotated enclave keys, refreshed TEE policy, and re-routed inference to redundant enclave cluster.",
-  },
-  {
-    source: "Fleet Edge | Gateway",
-    vector: "Coordinated packet flood",
-    severity: "high",
-    confidence: 0.88,
-    description: "Gateway observed bursty payloads mimicking telemetry to exhaust IDS windowing and hide malicious frames.",
-    remediation: "Applied adaptive rate limiting, enabled deeper packet inspection, and mirrored traffic to sandbox.",
-  },
-];
+const randomSigned = (magnitude: number) => (Math.random() * 2 - 1) * magnitude;
+
+const maybeSpike = (chance: number, magnitude: number) =>
+  Math.random() < chance ? randomSigned(magnitude) : 0;
 
 const initialWeights: WeightSnapshot[] = [
   {
@@ -132,42 +102,6 @@ const initialUpdates: ModelUpdate[] = [
   },
 ];
 
-const initialAnomalies: AnomalyEvent[] = [
-  {
-    id: "AN-1208",
-    timestamp: format(Date.now() - 15 * 60 * 1000, "HH:mm:ss"),
-    source: "Vehicle-08 | OTA",
-    vector: "Unsigned firmware delta",
-    severity: "high",
-    confidence: 0.82,
-    description: "OTA channel delivered unsigned delta during restricted maintenance window.",
-    remediation: "Rollback staged firmware and re-issue signed packages.",
-    status: "mitigated",
-  },
-  {
-    id: "AN-1211",
-    timestamp: format(Date.now() - 7 * 60 * 1000, "HH:mm:ss"),
-    source: "Vehicle-24 | CAN Bus",
-    vector: "Forged braking frames",
-    severity: "critical",
-    confidence: 0.91,
-    description: "Burst of spoofed braking frames attempted to override ABS arbitration.",
-    remediation: "Segmented CAN, enforced replay protection, raised override threshold.",
-    status: "contained",
-  },
-  {
-    id: "AN-1212",
-    timestamp: format(Date.now() - 3 * 60 * 1000, "HH:mm:ss"),
-    source: "Fleet Edge | Gateway",
-    vector: "Payload flood",
-    severity: "high",
-    confidence: 0.88,
-    description: "Telemetry-mimicking payloads aimed to exhaust IDS windows and hide malicious frames.",
-    remediation: "Applied adaptive rate limits and mirrored traffic to sandboxed IDS.",
-    status: "triaging",
-  },
-];
-
 const bumpVersion = (version: string) => {
   const parts = version.replace("v", "").split(".").map(Number);
   if (parts.length !== 3 || parts.some(Number.isNaN)) {
@@ -178,27 +112,34 @@ const bumpVersion = (version: string) => {
   return `v${parts.join(".")}`;
 };
 
-const pickTemplate = () => {
-  const template = anomalyTemplates[Math.floor(Math.random() * anomalyTemplates.length)];
-  const suffix = Math.floor(1000 + Math.random() * 9000);
-  const status: AnomalyStatus = ["triaging", "contained", "mitigated"][
-    Math.floor(Math.random() * 3)
-  ] as AnomalyStatus;
-
-  return {
-    id: `AN-${suffix}`,
-    timestamp: format(new Date(), "HH:mm:ss"),
-    status,
-    ...template,
-  };
-};
-
 const deriveWeights = (current: WeightSnapshot, severity: Severity) => {
-  const delta = severity === "critical" ? 0.04 : severity === "high" ? 0.025 : 0.015;
-  const sensitivity = clamp(current.anomalySensitivity + delta, 0.45, 0.9);
-  const driftTolerance = clamp(current.driftTolerance - delta / 2, 0.08, 0.35);
-  const adversarialResilience = clamp(current.adversarialResilience + delta / 1.5, 0.55, 0.95);
-  const signalTrust = clamp(current.signalTrust + delta / 2, 0.5, 0.9);
+  // Inject turbulence and occasional spikes so trajectories look less linear in the demo.
+  const baseVolatility = severity === "critical" ? 0.08 : severity === "high" ? 0.055 : 0.04;
+  const spike = maybeSpike(
+    severity === "critical" ? 0.5 : severity === "high" ? 0.35 : 0.2,
+    baseVolatility * 1.8,
+  );
+
+  const sensitivity = clamp(
+    current.anomalySensitivity + baseVolatility * 0.2 + randomSigned(baseVolatility) + spike * 0.5,
+    0.4,
+    0.95,
+  );
+  const driftTolerance = clamp(
+    current.driftTolerance - baseVolatility * 0.18 + randomSigned(baseVolatility * 0.9) - spike * 0.45,
+    0.05,
+    0.45,
+  );
+  const adversarialResilience = clamp(
+    current.adversarialResilience + baseVolatility * 0.15 + randomSigned(baseVolatility * 0.8) + spike * 0.35,
+    0.5,
+    0.98,
+  );
+  const signalTrust = clamp(
+    current.signalTrust + randomSigned(baseVolatility) - spike * 0.25,
+    0.42,
+    0.94,
+  );
 
   return {
     sensitivity,
@@ -208,99 +149,112 @@ const deriveWeights = (current: WeightSnapshot, severity: Severity) => {
   };
 };
 
+const mapGlobalAnomaly = (event: GlobalAnomalyEvent): AnomalyEvent => ({
+  id: event.id,
+  timestamp: event.timestamp,
+  source: event.source,
+  vector: event.vector,
+  severity: event.severity,
+  confidence: event.confidence,
+  description: event.description,
+  remediation: event.remediation,
+  status: event.status,
+});
+
 export function useAIMonitoringSimulation() {
-  const [anomalies, setAnomalies] = useState<AnomalyEvent[]>(initialAnomalies);
+  const { anomalies: streamAnomalies, activeRun } = useGlobalAnomalyStream();
+  const anomalies = useMemo(
+    () => streamAnomalies.slice(0, 12).map(mapGlobalAnomaly),
+    [streamAnomalies],
+  );
   const [updates, setUpdates] = useState<ModelUpdate[]>(initialUpdates);
   const [weights, setWeights] = useState<WeightSnapshot[]>(initialWeights);
-  const [activeRun, setActiveRun] = useState(false);
+  const lastProcessedAnomalyId = useRef<string | null>(streamAnomalies[0]?.id ?? null);
 
   const latestWeights = useMemo(() => weights[0] ?? initialWeights[initialWeights.length - 1], [weights]);
   const lastAnomaly = anomalies[0];
 
   useEffect(() => {
-    setActiveRun(true);
-    const interval = setInterval(() => {
-      const anomaly = pickTemplate();
+    const anomaly = anomalies[0];
+    if (!anomaly) {
+      return;
+    }
 
-      setAnomalies((prev) => [anomaly, ...prev].slice(0, 12));
-      toast(`Anomaly detected: ${anomaly.vector}`, {
-        description: `${anomaly.source} • ${anomaly.severity.toUpperCase()} • ${anomaly.timestamp}`,
-        position: "bottom-right",
-        className: "border-destructive/50",
-        duration: 5500,
+    if (lastProcessedAnomalyId.current === anomaly.id) {
+      return;
+    }
+
+    lastProcessedAnomalyId.current = anomaly.id;
+
+    const timer = window.setTimeout(() => {
+      let baseWeights: WeightSnapshot | null = null;
+      let snapshot: WeightSnapshot | null = null;
+
+      setWeights((prev) => {
+        const current = prev[0] ?? initialWeights[initialWeights.length - 1];
+        baseWeights = current;
+        const derived = deriveWeights(current, anomaly.severity);
+        const nextVersion = bumpVersion(current.version);
+        snapshot = {
+          timestamp: format(new Date(), "HH:mm:ss"),
+          version: nextVersion,
+          anomalySensitivity: derived.sensitivity,
+          driftTolerance: derived.driftTolerance,
+          adversarialResilience: derived.adversarialResilience,
+          signalTrust: derived.signalTrust,
+        };
+        return [snapshot, ...prev].slice(0, 15);
       });
 
-      setTimeout(() => {
-        let baseWeights: WeightSnapshot | null = null;
-        let snapshot: WeightSnapshot | null = null;
+      setUpdates((prev) => {
+        const current = baseWeights ?? weights[0] ?? initialWeights[initialWeights.length - 1];
+        const derived = snapshot;
 
-        setWeights((prev) => {
-          const current = prev[0] ?? initialWeights[initialWeights.length - 1];
-          baseWeights = current;
-          const derived = deriveWeights(current, anomaly.severity);
-          const nextVersion = bumpVersion(current.version);
-          snapshot = {
-            timestamp: format(new Date(), "HH:mm:ss"),
-            version: nextVersion,
-            anomalySensitivity: derived.sensitivity,
-            driftTolerance: derived.driftTolerance,
-            adversarialResilience: derived.adversarialResilience,
-            signalTrust: derived.signalTrust,
-          };
-          return [snapshot, ...prev].slice(0, 15);
-        });
+        if (!derived) {
+          return prev;
+        }
 
-        setUpdates((prev) => {
-          const current = baseWeights ?? weights[0] ?? initialWeights[initialWeights.length - 1];
-          const derived = snapshot;
-
-          if (!derived) {
-            return prev;
-          }
-
-          const update: ModelUpdate = {
-            id: `UP-${Math.floor(1800 + Math.random() * 200).toString()}`,
-            timestamp: format(new Date(), "HH:mm:ss"),
-            version: derived.version,
-            triggeredBy: anomaly.id,
-            durationSeconds: Math.floor(22 + Math.random() * 12),
-            summary:
-              anomaly.severity === "critical"
-                ? "Fast retrain on critical signal to reduce false negatives and tighten drift guardrails."
-                : "Incremental weight tune applied from anomaly feedback loop.",
-            deltas: [
-              {
-                label: "Anomaly sensitivity",
-                from: current.anomalySensitivity,
-                to: derived.anomalySensitivity,
-              },
-              {
-                label: "Drift tolerance",
-                from: current.driftTolerance,
-                to: derived.driftTolerance,
-              },
-              {
-                label: "Adversarial resilience",
-                from: current.adversarialResilience,
-                to: derived.adversarialResilience,
-              },
-              {
-                label: "Signal trust",
-                from: current.signalTrust,
-                to: derived.signalTrust,
-              },
-            ],
-          };
-          return [update, ...prev].slice(0, 10);
-        });
-      }, 1800 + Math.random() * 1200);
-    }, 9000);
+        const update: ModelUpdate = {
+          id: `UP-${Math.floor(1800 + Math.random() * 200).toString()}`,
+          timestamp: format(new Date(), "HH:mm:ss"),
+          version: derived.version,
+          triggeredBy: anomaly.id,
+          durationSeconds: Math.floor(22 + Math.random() * 12),
+          summary:
+            anomaly.severity === "critical"
+              ? "Fast retrain on critical signal to reduce false negatives and tighten drift guardrails."
+              : "Incremental weight tune applied from anomaly feedback loop.",
+          deltas: [
+            {
+              label: "Anomaly sensitivity",
+              from: current.anomalySensitivity,
+              to: derived.anomalySensitivity,
+            },
+            {
+              label: "Drift tolerance",
+              from: current.driftTolerance,
+              to: derived.driftTolerance,
+            },
+            {
+              label: "Adversarial resilience",
+              from: current.adversarialResilience,
+              to: derived.adversarialResilience,
+            },
+            {
+              label: "Signal trust",
+              from: current.signalTrust,
+              to: derived.signalTrust,
+            },
+          ],
+        };
+        return [update, ...prev].slice(0, 10);
+      });
+    }, 1800 + Math.random() * 1200);
 
     return () => {
-      clearInterval(interval);
-      setActiveRun(false);
+      window.clearTimeout(timer);
     };
-  }, []);
+  }, [anomalies, weights]);
 
   return {
     anomalies,
