@@ -37,6 +37,7 @@ import { useVehicles } from "@/hooks/api/useVehicles";
 import { useAlerts } from "@/hooks/api/useAlerts";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { ROLE_LABELS } from "@/lib/auth/roles";
+import { Link, useLocation } from "react-router-dom";
 
 type NavigationItem = {
   title: string;
@@ -47,6 +48,7 @@ type NavigationItem = {
 };
 
 export function SOCSidebar() {
+  const location = useLocation();
   const { state } = useSidebar();
   const { data: vehicles } = useVehicles();
   const { data: alerts } = useAlerts();
@@ -62,35 +64,40 @@ export function SOCSidebar() {
       title: "Dashboard",
       url: "/",
       icon: Home,
-      isActive: true,
+      isActive: location.pathname === "/",
     },
     {
       title: "Security Alerts",
       url: "/alerts",
       icon: AlertTriangle,
       badge: criticalAlerts.toString(),
+      isActive: location.pathname === "/alerts",
     },
     {
       title: "Fleet Management",
       url: "/fleet",
       icon: Car,
       badge: activeVehicles.toString(),
+      isActive: location.pathname === "/fleet",
     },
     {
       title: "TEE Security",
       url: "/tee",
       icon: Shield,
       badge: totalSecureTEEs.toLocaleString(),
+      isActive: location.pathname === "/tee",
     },
     {
       title: "Analytics",
       url: "/analytics",
       icon: BarChart3,
+      isActive: location.pathname === "/analytics",
     },
     {
       title: "Activity Monitor",
       url: "/activity",
       icon: Activity,
+      isActive: location.pathname === "/activity",
     },
   ];
 
@@ -124,7 +131,7 @@ export function SOCSidebar() {
                     isActive={item.isActive}
                     className="w-full justify-start"
                   >
-                    <a href={item.url} className="flex items-center gap-2">
+                    <Link to={item.url} className="flex items-center gap-2">
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                       {item.badge && state === "expanded" && (
@@ -135,7 +142,7 @@ export function SOCSidebar() {
                           {item.badge}
                         </Badge>
                       )}
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -150,10 +157,10 @@ export function SOCSidebar() {
               {adminItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <a href={item.url} className="flex items-center gap-2">
+                    <Link to={item.url} className="flex items-center gap-2">
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

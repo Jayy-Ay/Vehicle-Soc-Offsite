@@ -80,32 +80,66 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [])
 
   useEffect(() => {
-    if (isSupabaseConfigured && supabase) {
-      supabase.auth
-        .getSession()
-        .then(({ data }) => {
+    let isMounted = true
+    let unsubscribe: (() => void) | undefined
+
+    const bootstrap = async () => {
+      if (isSupabaseConfigured && supabase) {
+        try {
+          const { data } = await supabase.auth.getSession()
           const mapped = mapSupabaseUser(data.session)
-          setUser(mapped)
-          setStatus(mapped ? 'authenticated' : 'unauthenticated')
-        })
-        .catch(() => {
-          setStatus('unauthenticated')
+          if (!isMounted) return
+
+          if (mapped) {
+            setUser(mapped)
+            setStatus('authenticated')
+          } else {
+            const demo = restoreDemoSession()
+            if (!demo) {
+              setUser(null)
+              setStatus('unauthenticated')
+            }
+          }
+        } catch (error) {
+          if (!isMounted) return
+          const demo = restoreDemoSession()
+          if (!demo) {
+            setUser(null)
+            setStatus('unauthenticated')
+          }
+        }
+
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (!isMounted) return
+          const mapped = mapSupabaseUser(session)
+          if (mapped) {
+            setUser(mapped)
+            setStatus('authenticated')
+          } else {
+            const demo = restoreDemoSession()
+            if (!demo) {
+              setUser(null)
+              setStatus('unauthenticated')
+            }
+          }
         })
 
-      const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-        const mapped = mapSupabaseUser(session)
-        setUser(mapped)
-        setStatus(mapped ? 'authenticated' : 'unauthenticated')
-      })
+        unsubscribe = () => listener?.subscription.unsubscribe()
+        return
+      }
 
-      return () => {
-        listener?.subscription.unsubscribe()
+      const demo = restoreDemoSession()
+      if (!demo) {
+        setStatus((current) => (current === 'loading' ? 'unauthenticated' : current))
       }
     }
 
-    restoreDemoSession()
-    setStatus((current) => (current === 'loading' ? 'unauthenticated' : current))
-    return undefined
+    void bootstrap()
+
+    return () => {
+      isMounted = false
+      unsubscribe?.()
+    }
   }, [restoreDemoSession])
 
   const signInWithEmail = useCallback(
