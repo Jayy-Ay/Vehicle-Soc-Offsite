@@ -92,7 +92,7 @@ export default function Alerts() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Ask in natural language (e.g., \"show high alerts last 24 hours for VH-2847\")"
+                placeholder={'Ask in natural language (e.g., "show high alerts last 24 hours for VH-2847")'}
                 className="pl-9 w-full"
                 value={queryText}
                 onChange={(event) => setQueryText(event.target.value)}
