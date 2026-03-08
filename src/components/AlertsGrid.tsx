@@ -1,6 +1,9 @@
 import { AlertTriangle, Shield, Zap, Bug, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import type { Database } from "@/lib/database.types";
+
+type AlertRow = Database['public']['Tables']['alerts']['Row'];
 
 // Format timestamp to human readable format
 const formatTimestamp = (timestamp: string) => {
@@ -30,7 +33,7 @@ const formatTimestamp = (timestamp: string) => {
   }
 };
 
-interface Alert {
+type GridAlert = {
   id: string;
   severity: "high" | "medium" | "low" | "benign";
   title: string;
@@ -39,9 +42,20 @@ interface Alert {
   teeId: string;
   timestamp: string;
   status: "pending" | "investigating" | "resolved";
-}
+};
 
-const mockAlerts: Alert[] = [
+const normalizeAlert = (alert: AlertRow | GridAlert): GridAlert => ({
+  id: alert.id,
+  severity: alert.severity,
+  title: alert.title,
+  description: alert.description,
+  vehicleId: "vehicle_id" in alert ? alert.vehicle_id : alert.vehicleId,
+  teeId: "tee_id" in alert ? alert.tee_id : alert.teeId,
+  timestamp: alert.timestamp,
+  status: alert.status,
+});
+
+const mockAlerts: GridAlert[] = [
   {
     id: "ALT-001",
     severity: "high",
@@ -94,7 +108,7 @@ const mockAlerts: Alert[] = [
   }
 ];
 
-const getSeverityIcon = (severity: Alert["severity"]) => {
+const getSeverityIcon = (severity: GridAlert["severity"]) => {
   switch (severity) {
     case "high":
       return <AlertTriangle className="h-4 w-4 text-critical" />;
@@ -107,7 +121,7 @@ const getSeverityIcon = (severity: Alert["severity"]) => {
   }
 };
 
-const getSeverityBadge = (severity: Alert["severity"]) => {
+const getSeverityBadge = (severity: GridAlert["severity"]) => {
   switch (severity) {
     case "high":
       return <Badge variant="destructive" className="bg-critical/20 text-critical border-critical">High</Badge>;
@@ -120,7 +134,7 @@ const getSeverityBadge = (severity: Alert["severity"]) => {
   }
 };
 
-const getStatusBadge = (status: Alert["status"]) => {
+const getStatusBadge = (status: GridAlert["status"]) => {
   switch (status) {
     case "pending":
       return <Badge variant="outline" className="border-muted-foreground text-muted-foreground">Pending</Badge>;
@@ -131,8 +145,8 @@ const getStatusBadge = (status: Alert["status"]) => {
   }
 };
 
-export const AlertsGrid = ({ alerts, simplified = false }: { alerts?: Alert[], simplified?: boolean }) => {
-  const displayAlerts = alerts ?? mockAlerts;
+export const AlertsGrid = ({ alerts, simplified = false }: { alerts?: (AlertRow | GridAlert)[], simplified?: boolean }) => {
+  const displayAlerts = alerts ? alerts.map(normalizeAlert) : mockAlerts;
   
   if (simplified) {
     // Simplified version for dashboard - show only top 5 alerts
