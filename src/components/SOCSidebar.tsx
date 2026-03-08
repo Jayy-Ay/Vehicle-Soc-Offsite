@@ -10,6 +10,7 @@ import {
   User2,
   LogOut
 } from "lucide-react";
+import { Brain } from "lucide-react";
 
 import {
   Sidebar,
@@ -34,8 +35,25 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useVehicles } from "@/hooks/api/useVehicles";
 import { useAlerts } from "@/hooks/api/useAlerts";
+import { Link, useLocation } from "react-router-dom";
+import { useUser } from "@/lib/auth/UserContext";
 
-const adminItems = [
+type AdminItem = {
+  title: string;
+  url: string;
+  icon: typeof Settings;
+  badge?: string;
+  roles?: readonly ("administrator" | "ml_engineer")[];
+};
+
+const adminItems: AdminItem[] = [
+  {
+    title: "AI Model Updates",
+    url: "/ai-model-updates",
+    icon: Brain,
+    badge: "live",
+    roles: ["administrator", "ml_engineer"] as const,
+  },
   {
     title: "Settings",
     url: "/settings",
@@ -47,6 +65,8 @@ export function SOCSidebar() {
   const { state } = useSidebar();
   const { data: vehicles } = useVehicles();
   const { data: alerts } = useAlerts();
+  const location = useLocation();
+  const { user, hasRole } = useUser();
 
   // Calculate metrics from real data
   const criticalAlerts = alerts?.filter(a => a.severity === 'high').length || 0;
@@ -58,7 +78,6 @@ export function SOCSidebar() {
       title: "Dashboard",
       url: "/",
       icon: Home,
-      isActive: true,
     },
     {
       title: "Security Alerts",
@@ -101,10 +120,13 @@ export function SOCSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    isActive={item.isActive}
+                    isActive={
+                      location.pathname === item.url ||
+                      (item.url !== "/" && location.pathname.startsWith(item.url))
+                    }
                     className="w-full justify-start"
                   >
-                    <a href={item.url} className="flex items-center gap-2">
+                    <Link to={item.url} className="flex items-center gap-2">
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                       {item.badge && state === "expanded" && (
@@ -115,7 +137,7 @@ export function SOCSidebar() {
                           {item.badge}
                         </Badge>
                       )}
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -127,16 +149,30 @@ export function SOCSidebar() {
           <SidebarGroupLabel>Administration</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {adminItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url} className="flex items-center gap-2">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {adminItems.map((item) => {
+                if (item.roles && !hasRole(item.roles)) return null;
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={
+                        location.pathname === item.url ||
+                        location.pathname.startsWith(item.url)
+                      }
+                    >
+                      <Link to={item.url} className="flex items-center gap-2">
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                        {item.badge && state === "expanded" && (
+                          <Badge variant="outline" className="ml-auto text-[10px] uppercase">
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -152,11 +188,18 @@ export function SOCSidebar() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarFallback className="rounded-lg">SA</AvatarFallback>
+                    <AvatarFallback className="rounded-lg">
+                      {user.name
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">Security Admin</span>
-                    <span className="truncate text-xs">admin@soc.com</span>
+                    <span className="truncate font-semibold">{user.name}</span>
+                    <span className="truncate text-xs">{user.email}</span>
                   </div>
                   <ChevronUp className="ml-auto size-4" />
                 </SidebarMenuButton>
