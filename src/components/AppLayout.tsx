@@ -13,9 +13,6 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { Button } from "@/components/ui/button";
-import { LogIn } from "lucide-react";
-import { Link } from "react-router-dom";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -43,12 +40,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 </BreadcrumbList>
               </Breadcrumb>
             </div>
-
-            <Link to="/login">
-              <Button variant="ghost" size="icon">
-                <LogIn className="h-5 w-5" />
-              </Button>
-            </Link>
+            <div className="flex items-center gap-3" />
           </div>
         </header>
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">{children}</div>

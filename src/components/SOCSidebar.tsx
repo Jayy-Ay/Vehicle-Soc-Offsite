@@ -1,3 +1,4 @@
+import React from "react";
 import {
   AlertTriangle,
   Shield,
@@ -34,61 +35,87 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useVehicles } from "@/hooks/api/useVehicles";
 import { useAlerts } from "@/hooks/api/useAlerts";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { ROLE_LABELS } from "@/lib/auth/roles";
+import { Link, useLocation } from "react-router-dom";
 
-const adminItems = [
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
-  },
-];
+type NavigationItem = {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  isActive?: boolean;
+  badge?: string;
+};
 
 export function SOCSidebar() {
+  const location = useLocation();
   const { state } = useSidebar();
   const { data: vehicles } = useVehicles();
   const { data: alerts } = useAlerts();
+  const { user, signOut } = useAuth();
 
   // Calculate metrics from real data
   const criticalAlerts = alerts?.filter(a => a.severity === 'high').length || 0;
   const activeVehicles = vehicles?.length || 0;
   const totalSecureTEEs = vehicles?.reduce((sum, v) => sum + v.tee_secure, 0) || 0;
 
-  const navigationItems = [
+  const navigationItems: NavigationItem[] = [
     {
       title: "Dashboard",
       url: "/",
       icon: Home,
-      isActive: true,
+      isActive: location.pathname === "/",
     },
     {
       title: "Security Alerts",
       url: "/alerts",
       icon: AlertTriangle,
       badge: criticalAlerts.toString(),
+      isActive: location.pathname === "/alerts",
     },
     {
       title: "Fleet Management",
       url: "/fleet",
       icon: Car,
       badge: activeVehicles.toString(),
+      isActive: location.pathname === "/fleet",
     },
     {
       title: "TEE Security",
       url: "/tee",
       icon: Shield,
       badge: totalSecureTEEs.toLocaleString(),
+      isActive: location.pathname === "/tee",
     },
     {
       title: "Analytics",
       url: "/analytics",
       icon: BarChart3,
+      isActive: location.pathname === "/analytics",
     },
     {
       title: "Activity Monitor",
       url: "/activity",
       icon: Activity,
+      isActive: location.pathname === "/activity",
     },
   ];
+
+  const adminItems = user?.role === "admin" ? [
+    {
+      title: "Settings",
+      url: "/settings",
+      icon: Settings,
+    },
+  ] : [];
+
+  const initials =
+    user?.name
+      ?.split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "US";
   
   return (
     <Sidebar collapsible="icon" className="border-r border-border bg-sidebar-background">
@@ -104,7 +131,7 @@ export function SOCSidebar() {
                     isActive={item.isActive}
                     className="w-full justify-start"
                   >
-                    <a href={item.url} className="flex items-center gap-2">
+                    <Link to={item.url} className="flex items-center gap-2">
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                       {item.badge && state === "expanded" && (
@@ -115,7 +142,7 @@ export function SOCSidebar() {
                           {item.badge}
                         </Badge>
                       )}
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -130,10 +157,10 @@ export function SOCSidebar() {
               {adminItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <a href={item.url} className="flex items-center gap-2">
+                    <Link to={item.url} className="flex items-center gap-2">
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -152,11 +179,11 @@ export function SOCSidebar() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarFallback className="rounded-lg">SA</AvatarFallback>
+                    <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">Security Admin</span>
-                    <span className="truncate text-xs">admin@soc.com</span>
+                    <span className="truncate font-semibold">{user?.name}</span>
+                    <span className="truncate text-xs">{user?.email}</span>
                   </div>
                   <ChevronUp className="ml-auto size-4" />
                 </SidebarMenuButton>
@@ -167,15 +194,16 @@ export function SOCSidebar() {
                 align="end"
                 sideOffset={4}
               >
-                <DropdownMenuItem>
+                <DropdownMenuItem className="flex-col items-start">
                   <User2 className="h-4 w-4 mr-2" />
-                  Account
+                  <div>
+                    <p className="text-sm font-semibold">{user?.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {ROLE_LABELS[user?.role ?? "viewer"]}
+                    </p>
+                  </div>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={signOut}>
                   <LogOut className="h-4 w-4 mr-2" />
                   Log out
                 </DropdownMenuItem>

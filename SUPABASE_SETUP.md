@@ -197,6 +197,12 @@ useEffect(() => {
 - Ensure Supabase project is active and not paused
 - Check that API key has correct permissions in Supabase dashboard
 
+### Auth & Google SSO (optional)
+- Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to enable Supabase Auth in the app
+- Enable Google provider under **Authentication > Providers > Google** in Supabase if you want SSO
+- Set the Authorized Redirect URL to your dev origin (e.g., `http://localhost:5173/`) and any deployed origin you use
+- The app falls back to built-in demo accounts if Supabase/Google credentials are not configured
+
 ### Migration Issues
 - Ensure SQL script runs without errors in SQL Editor
 - Check Supabase logs in dashboard for error details

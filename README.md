@@ -68,3 +68,15 @@ This project is built with:
 - Threat visualization and analytics
 - Vehicle status monitoring
 - Alert management system
+
+## Authentication and access control
+
+- Supabase Auth backed sign-in with optional Google SSO (`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`)
+- Demo-friendly fallback if Supabase/Google is not configured (no setup required)
+- Roles: **Admin** (full access), **Manager** (limited management), **Viewer/Analyst** (read-only)
+- Demo accounts ready to use:
+  - Admin — `admin@soc.demo` / `admin123!`
+  - Manager — `manager@soc.demo` / `manager123!`
+  - Analyst — `analyst@soc.demo` / `analyst123!`
+
+If you enable Google SSO in Supabase, the login screen will use it automatically; otherwise, the demo accounts remain available for the live walkthrough. Enable Google under **Supabase → Authentication → Providers** and ensure the Redirect URL includes your site origin (e.g., `http://localhost:5173/`).

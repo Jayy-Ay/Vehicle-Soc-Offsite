@@ -5,8 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Settings as SettingsIcon, Bell, Shield, Database, User, Lock } from "lucide-react";
+import { AppLayout } from "@/components/AppLayout";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { ROLE_LABELS } from "@/lib/auth/roles";
 
 export default function Settings() {
+  const { user } = useAuth();
+
   return (
 		<AppLayout>
 			<div className="space-y-6">
@@ -35,16 +40,20 @@ export default function Settings() {
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<div className="space-y-2">
 									<Label htmlFor="name">Full Name</Label>
-									<Input id="name" defaultValue="Security Admin" />
+									<Input id="name" defaultValue={user?.name ?? "Security Admin"} />
 								</div>
 								<div className="space-y-2">
 									<Label htmlFor="email">Email</Label>
-									<Input id="email" type="email" defaultValue="admin@soc.com" />
+									<Input id="email" type="email" defaultValue={user?.email ?? "admin@soc.com"} />
 								</div>
 							</div>
 							<div className="space-y-2">
 								<Label htmlFor="role">Role</Label>
-								<Input id="role" defaultValue="Security Administrator" disabled />
+								<Input
+                  id="role"
+                  defaultValue={ROLE_LABELS[user?.role ?? "admin"]}
+                  disabled
+                />
 							</div>
 							<Button>Save Changes</Button>
 						</CardContent>
