@@ -31,6 +31,18 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 const DEMO_STORAGE_KEY = 'vehicle-soc-demo-user'
 
+const readCachedDemoUser = (): AuthUser | null => {
+  const cached = localStorage.getItem(DEMO_STORAGE_KEY)
+  if (!cached) return null
+  try {
+    return JSON.parse(cached) as AuthUser
+  } catch (error) {
+    console.warn('Failed to parse cached demo user', error)
+    localStorage.removeItem(DEMO_STORAGE_KEY)
+    return null
+  }
+}
+
 const mapSupabaseUser = (session: Session | null): AuthUser | null => {
   if (!session?.user) return null
   const user = session.user
@@ -60,23 +72,19 @@ const mapDemoUser = (user: DemoUser): AuthUser => ({
 })
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<AuthUser | null>(null)
-  const [status, setStatus] = useState<AuthStatus>('loading')
+  const cachedDemo = readCachedDemoUser()
+  const [user, setUser] = useState<AuthUser | null>(cachedDemo)
+  const [status, setStatus] = useState<AuthStatus>(cachedDemo ? 'authenticated' : 'loading')
 
   const restoreDemoSession = useCallback(() => {
-    const cached = localStorage.getItem(DEMO_STORAGE_KEY)
-    if (!cached) return null
-    try {
-      const parsed = JSON.parse(cached) as AuthUser
+    const parsed = readCachedDemoUser()
+    if (parsed) {
       setUser(parsed)
       setStatus('authenticated')
       return parsed
-    } catch (error) {
-      console.warn('Failed to restore demo auth session', error)
-      localStorage.removeItem(DEMO_STORAGE_KEY)
-      setStatus('unauthenticated')
-      return null
     }
+    setStatus((current) => (current === 'loading' ? 'unauthenticated' : current))
+    return null
   }, [])
 
   useEffect(() => {
@@ -89,13 +97,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const { data } = await supabase.auth.getSession()
           const mapped = mapSupabaseUser(data.session)
           if (!isMounted) return
-
           if (mapped) {
             setUser(mapped)
             setStatus('authenticated')
           } else {
             const demo = restoreDemoSession()
-            if (!demo) {
+            if (!demo && !cachedDemo) {
               setUser(null)
               setStatus('unauthenticated')
             }
@@ -112,16 +119,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
           if (!isMounted) return
           const mapped = mapSupabaseUser(session)
-          if (mapped) {
-            setUser(mapped)
-            setStatus('authenticated')
-          } else {
-            const demo = restoreDemoSession()
-            if (!demo) {
-              setUser(null)
-              setStatus('unauthenticated')
-            }
-          }
+
+          setUser((prev) => {
+            const nextUser = mapped ?? (prev?.source === 'demo' ? prev : readCachedDemoUser())
+            setStatus(nextUser ? 'authenticated' : 'unauthenticated')
+            return nextUser
+          })
         })
 
         unsubscribe = () => listener?.subscription.unsubscribe()
