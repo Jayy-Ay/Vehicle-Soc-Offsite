@@ -21,9 +21,10 @@ import {
 import { supabase } from '@/lib/supabase';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Database as db } from "@/lib/database.types";
+import type { Database } from "@/lib/database.types";
 import { VehiclesTable, AlertsTable, ThreatsTable } from "@/components/QueryTable";
-import { parseLogQlMut } from "@/hooks/api/useVehicles";
+import { useLogQLQuery } from "@/hooks/api/useVehicles";
+import type { LogQLExecutionResult, QueryIntent } from "@/lib/LogQLParser";
 
 // Database configuration
 const DATABASE_TYPE = 'PostgreSQL';
@@ -36,19 +37,35 @@ const DATABASE_SCHEMA = [
   { table: 'threat_metrics', description: 'Historical threat data' },
 ];
 
-type TableName = "vehicles" | "alerts" | "threat_metrics"
+type TableName = "vehicles" | "alerts" | "threat_metrics";
+type VehicleRow = Database["public"]["Tables"]["vehicles"]["Row"];
+type AlertRow = Database["public"]["Tables"]["alerts"]["Row"];
+type ThreatRow = Database["public"]["Tables"]["threat_metrics"]["Row"];
 
-interface QueryResult {
+interface SchemaColumn {
+  name: string;
+  type: string;
+  nullable: boolean;
+  defaultValue: string | null;
+}
+
+interface SchemaTable {
+  name: string;
+  description?: string;
+  columns: SchemaColumn[];
+}
+
+type ExecutionRow = VehicleRow | AlertRow | ThreatRow;
+
+type QueryResult = LogQLExecutionResult<ExecutionRow> & {
   id: string;
-  query: string;
-  table: TableName
-  result: any[];
+  inputText: string;
   error?: string;
   executedAt: Date;
   executionTime: number;
-}
+};
 
-function ResultTable({ table, rows, }: { table: "vehicles" | "alerts" | "threat_metrics" ; rows: any[] }) {
+function ResultTable({ table, rows, }: { table: "vehicles" | "alerts" | "threat_metrics" ; rows: ExecutionRow[] }) {
   switch (table) {
     case "vehicles":
       return <VehiclesTable vehicles={rows} />
@@ -67,39 +84,36 @@ function ResultTable({ table, rows, }: { table: "vehicles" | "alerts" | "threat_
 
 const LogQLQuery = () => {
   const [query, setQuery] = useState('');
-  const { mutateAsync } = parseLogQlMut();
+  const { mutateAsync } = useLogQLQuery();
 
   const [queryHistory, setQueryHistory] = useState<QueryResult[]>([]);
   const [isExecuting, setIsExecuting] = useState(false);
   const [currentResult, setCurrentResult] = useState<QueryResult | null>(null);
   const [examplesOpen, setExamplesOpen] = useState(true);
   const [historyOpen, setHistoryOpen] = useState(true);
-  const [schemaData, setSchemaData] = useState<any[]>([]);
+  const [schemaData, setSchemaData] = useState<SchemaTable[]>([]);
   const [isLoadingSchema, setIsLoadingSchema] = useState(false);
 
-  // Predefined SQL queries adapted for Supabase
   const exampleQueries = [
     {
-      query: `SELECT * FROM alerts ORDER BY created_at DESC LIMIT 10;`,
-      description: "View the latest 10 security alerts"
+      query: `alerts severity high last 2 hours limit 10`,
+      description: "Latest high severity alerts in the last 2 hours"
     },
     {
-      query: `SELECT * FROM vehicles ORDER BY created_at DESC LIMIT 10;`,
-      description: "View all registered vehicles and their TEE status"
+      query: `vehicles tee_status critical in San Francisco`,
+      description: "Critical vehicles in San Francisco"
     },
     {
-      query: `SELECT * FROM alerts WHERE severity = 'high' ORDER BY created_at DESC;`,
-      description: "Find all critical security alerts"
+      query: `alerts vehicle VH-1923 status investigating`,
+      description: "Alerts under investigation for vehicle VH-1923"
     },
     {
-      query: `SELECT tee_status, COUNT(*) as count FROM vehicles GROUP BY tee_status;`,
-      description: "Count vehicles grouped by TEE status"
+      query: `threat metrics last 24 hours limit 50`,
+      description: "Threat metrics over the last day"
     },
     {
-      query: `SELECT 'alerts' as table_name, COUNT(*) as row_count FROM alerts
-UNION ALL
-SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
-      description: "Check if tables have data"
+      query: `vehicles model Model 3-2024 limit 5`,
+      description: "Vehicles matching a specific model"
     }
   ];
 
@@ -131,11 +145,20 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
       if (error) throw error;
       
       // Group columns by table
-      const groupedSchema = data.reduce((acc: any, row: any) => {
+      type SchemaRow = {
+        table_name: string;
+        column_name: string | null;
+        data_type: string | null;
+        is_nullable: string | null;
+        column_default: string | null;
+      };
+
+      const groupedSchema = (data as SchemaRow[]).reduce<Record<string, SchemaTable>>((acc, row) => {
         const tableName = row.table_name;
         if (!acc[tableName]) {
           acc[tableName] = {
             name: tableName,
+            description: DATABASE_SCHEMA.find((item) => item.table === tableName)?.description,
             columns: []
           };
         }
@@ -144,7 +167,7 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
             name: row.column_name,
             type: row.data_type,
             nullable: row.is_nullable === 'YES',
-            defaultValue: row.column_default
+            defaultValue: row.column_default ?? null
           });
         }
         return acc;
@@ -157,7 +180,7 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
       setSchemaData(DATABASE_SCHEMA.map(item => ({
         name: item.table,
         description: item.description,
-        columns: [] // Empty columns array for fallback
+        columns: []
       })));
     } finally {
       setIsLoadingSchema(false);
@@ -175,30 +198,40 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
     const startTime = Date.now();
 
     try {
-      // First, try to use the execute_sql function for raw SQL
-      const { table, data } = await mutateAsync(query);
+      const execution = await mutateAsync(query);
       
       const executionTime = Date.now() - startTime;
       const result: QueryResult = {
+        ...execution,
         id: Date.now().toString(),
-        query,
-        table: table as TableName,
-        result: data || [],
+        inputText: query,
         error: undefined,
         executedAt: new Date(),
-        executionTime
+        executionTime,
+        data: execution.data ?? [],
       };
 
       setCurrentResult(result);
       setQueryHistory(prev => [result, ...prev.slice(0, 9)]); // Keep last 10 queries
     } catch (err) {
       const executionTime = Date.now() - startTime;
+      const fallbackIntent: QueryIntent = {
+        table: "vehicles",
+        filters: [],
+        limit: 0,
+        orderBy: {
+          field: "last_update",
+          direction: "desc",
+        },
+      };
       const result: QueryResult = {
         id: Date.now().toString(),
-        query,
+        inputText: query,
+        intent: fallbackIntent,
+        logql: "",
         table: "vehicles",
-        result: [],
-        error: err instanceof Error ? err.message : 'Unknown error occurred. Make sure the execute_sql function is created in your database.',
+        data: [],
+        error: err instanceof Error ? err.message : 'Unknown error occurred while generating or executing LogQL.',
         executedAt: new Date(),
         executionTime
       };
@@ -215,18 +248,8 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
   };
 
   const loadHistoryQuery = (historyResult: QueryResult) => {
-    setQuery(historyResult.query);
+    setQuery(historyResult.inputText);
     setCurrentResult(historyResult);
-  };
-
-  const formatResultForDisplay = (result: any[]) => {
-    if (!result || result.length === 0) return 'No results found.';
-    
-    try {
-      return JSON.stringify(result, null, 2);
-    } catch {
-      return 'Error formatting results.';
-    }
   };
 
   return (
@@ -236,11 +259,10 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-              Advanced SQL Query
+              LogQL Query Explorer
             </h1>
             <p className="text-muted-foreground">
-              Write LogQL to query specific data with advanced database querying <br />
-              [TABLE] [FIELD] [VALUE]
+              Describe what you want in natural language. We will translate it into LogQL, execute it on Supabase, and show the results.
             </p>
           </div>
           <Badge variant="outline" className="flex items-center gap-1">
@@ -258,7 +280,7 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
               <CardContent className="space-y-4 pt-6">
                 <div className="space-y-2">
                   <Textarea
-                    placeholder="e.g vehicles tee_status secure"
+                    placeholder="e.g. show high severity alerts for vehicle VH-1923 in the last 2 hours"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     className="font-mono text-sm min-h-[200px] bg-muted/50"
@@ -308,7 +330,7 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
                         <Clock className="h-3 w-3" />
                         {currentResult.executionTime}ms
                       </span>
-                      <span>{currentResult.result.length} rows</span>
+                      <span>{currentResult.data.length} rows</span>
                     </div>
                   </div>
                 </CardHeader>
@@ -319,11 +341,21 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
                       <AlertDescription>{currentResult.error}</AlertDescription>
                     </Alert>
                   ) : (
-                    <ScrollArea className="max-h-[400px] w-full">
-                      <div className="min-w-[900px]">
-                        <ResultTable table={currentResult.table} rows={currentResult.result}/>
+                    <>
+                      <div className="mb-4">
+                        <p className="text-xs uppercase text-muted-foreground mb-1">
+                          Generated LogQL
+                        </p>
+                        <pre className="bg-muted/60 text-xs rounded-md p-3 overflow-x-auto border border-border">
+                          {currentResult.logql}
+                        </pre>
                       </div>
-                    </ScrollArea>
+                      <ScrollArea className="max-h-[400px] w-full">
+                        <div className="min-w-[900px]">
+                          <ResultTable table={currentResult.table} rows={currentResult.data}/>
+                        </div>
+                      </ScrollArea>
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -362,7 +394,7 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
                         </div>
                         {table.columns && table.columns.length > 0 ? (
                           <div className="ml-4 space-y-1">
-                            {table.columns.map((column: any, colIndex: number) => (
+                            {table.columns.map((column: SchemaColumn, colIndex: number) => (
                               <div key={colIndex} className="flex items-center justify-between text-xs">
                                 <div className="flex items-center gap-2">
                                   <span className="font-mono text-info">{column.name}</span>
@@ -503,10 +535,10 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
                                   </span>
                                 </div>
                                 <div className="font-mono text-xs truncate">
-                                  {historyItem.query.split('\n')[0]}
+                                  {historyItem.inputText.split('\n')[0]}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  {historyItem.error ? 'Error' : `${historyItem.result.length} rows`}
+                                  {historyItem.error ? 'Error' : `${historyItem.data.length} rows`}
                                 </div>
                               </div>
                             </Button>
@@ -525,5 +557,4 @@ SELECT 'vehicles' as table_name, COUNT(*) as row_count FROM vehicles;`,
     </AppLayout>
   );
 };
-/* do it for the other schemas too. then change examples to logQL examples */
 export default LogQLQuery;

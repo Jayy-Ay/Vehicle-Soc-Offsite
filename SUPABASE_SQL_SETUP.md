@@ -51,8 +51,8 @@ Run this test query to make sure it works:
 SELECT execute_sql('SELECT * FROM alerts LIMIT 5');
 ```
 
-## Step 4: Verify Your LogQL Query Interface
-After creating the function, your LogQL Query interface should work properly with full SQL support.
+## Step 4: Verify the Schema Helper
+The LogQL query interface now translates natural language into LogQL and runs the query through Supabase. The `execute_sql` helper is only used to render the schema sidebar (so users can see available columns). Confirm it returns results so the schema panel can load.
 
 ## Security Notes
 - The function only allows SELECT statements for security
