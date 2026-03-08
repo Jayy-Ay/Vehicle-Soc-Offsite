@@ -147,7 +147,12 @@ export function LoginForm({ className, ...props }: React.ComponentProps<"div">) 
                 variant="outline"
                 className="w-full"
                 onClick={handleGoogleLogin}
-                disabled={isLoading}
+                disabled={isLoading || !supabaseReady}
+                title={
+                  supabaseReady
+                    ? undefined
+                    : "Supabase credentials missing; use demo accounts or email/password"
+                }
               >
                 <img
                   src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"

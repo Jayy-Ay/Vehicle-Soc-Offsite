@@ -79,4 +79,4 @@ This project is built with:
   - Manager — `manager@soc.demo` / `manager123!`
   - Analyst — `analyst@soc.demo` / `analyst123!`
 
-If you enable Google SSO in Supabase, the login screen will use it automatically; otherwise, the demo accounts remain available for the live walkthrough.
+If you enable Google SSO in Supabase, the login screen will use it automatically; otherwise, the demo accounts remain available for the live walkthrough. Enable Google under **Supabase → Authentication → Providers** and ensure the Redirect URL includes your site origin (e.g., `http://localhost:5173/`).

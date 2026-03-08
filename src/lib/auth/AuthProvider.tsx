@@ -182,13 +182,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!isSupabaseConfigured || !supabase) {
       throw new Error('Google login requires Supabase credentials. Using demo accounts instead.')
     }
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
-    })
-    if (error) throw error
-    if (data?.url) {
-      window.location.href = data.url
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      })
+      if (error) {
+        if (error.message?.toLowerCase().includes('provider is not enabled')) {
+          throw new Error('Google provider is disabled in Supabase. Enable it under Authentication > Providers or continue with demo accounts.')
+        }
+        throw error
+      }
+      if (data?.url) {
+        window.location.href = data.url
+      }
+    } catch (error) {
+      throw error
     }
   }, [])
 
