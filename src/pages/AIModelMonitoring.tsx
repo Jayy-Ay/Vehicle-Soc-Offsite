@@ -385,7 +385,7 @@ export default function AIModelMonitoring() {
           </Card>
         </div>
 
-        <Card className="bg-gradient-surface border-border shadow-soc">
+        {/* <Card className="bg-gradient-surface border-border shadow-soc">
           <CardHeader className="flex items-start justify-between gap-3">
             <div className="space-y-1">
               <CardTitle className="text-xl">Signal relationship graph</CardTitle>
@@ -518,7 +518,7 @@ export default function AIModelMonitoring() {
               )}
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
 
         <div className="grid gap-4 lg:grid-cols-2">
           <Card className="bg-gradient-surface border-border shadow-soc">
