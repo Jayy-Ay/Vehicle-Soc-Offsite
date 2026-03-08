@@ -44,6 +44,7 @@ export default function AIModelMonitoring() {
     useAIMonitoringSimulation();
   const [query, setQuery] = useState("");
   const [selectedUpdate, setSelectedUpdate] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
 
   const anomalyIndex = useMemo(
     () => new Map(anomalies.map((anomaly) => [anomaly.id, anomaly])),
@@ -93,6 +94,40 @@ export default function AIModelMonitoring() {
     };
   });
 
+  const graphNodes = useMemo(() => {
+    const nodes = filteredUpdates.slice(0, 6).map((update, index) => {
+      const anomaly = anomalyIndex.get(update.triggeredBy);
+      return {
+        id: update.id,
+        label: update.version,
+        detail: anomaly?.vector ?? update.summary,
+        severity: anomaly?.severity ?? "medium",
+        type: "update" as const,
+        index,
+      };
+    });
+
+    const anomalyNodes = anomalies.slice(0, 6).map((anomaly, index) => ({
+      id: anomaly.id,
+      label: anomaly.vector,
+      detail: anomaly.description,
+      severity: anomaly.severity,
+      type: "anomaly" as const,
+      index,
+    }));
+
+    return [...nodes, ...anomalyNodes];
+  }, [anomalies, anomalyIndex, filteredUpdates]);
+
+  const graphEdges = useMemo(() => {
+    return filteredUpdates.slice(0, 6).map((update, index) => ({
+      id: `${update.id}-edge`,
+      from: update.id,
+      to: update.triggeredBy,
+      weight: 0.7 + (index % 3) * 0.1,
+    }));
+  }, [filteredUpdates]);
+
   return (
     <AppLayout>
       <div className="space-y-6 pb-2">
@@ -107,17 +142,15 @@ export default function AIModelMonitoring() {
               of the detection model.
             </p>
           </div>
-          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-end">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline" className="border-primary/50 text-primary">
-                Live simulation
-              </Badge>
-              <Badge variant="secondary">Version {latestWeights.version}</Badge>
-              <Badge variant={activeRun ? "default" : "outline"} className="flex items-center gap-1">
-                <Sparkles className="h-3.5 w-3.5" />
-                Retrain loop {activeRun ? "armed" : "idle"}
-              </Badge>
-            </div>
+          <div className="flex flex-wrap items-start justify-end gap-2">
+            <Badge variant="outline" className="border-primary/50 text-primary">
+              Live simulation
+            </Badge>
+            <Badge variant="secondary">Version {latestWeights.version}</Badge>
+            <Badge variant={activeRun ? "default" : "outline"} className="flex items-center gap-1">
+              <Sparkles className="h-3.5 w-3.5" />
+              Retrain loop {activeRun ? "armed" : "idle"}
+            </Badge>
           </div>
         </div>
 
@@ -310,7 +343,7 @@ export default function AIModelMonitoring() {
 
           <Card className="bg-gradient-surface border-border shadow-soc">
             <CardHeader className="space-y-1">
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <CardTitle className="text-xl">Retraining loop</CardTitle>
                 <Badge variant="outline" className="text-[11px]">Autonomous</Badge>
               </div>
@@ -345,6 +378,142 @@ export default function AIModelMonitoring() {
             </CardFooter>
           </Card>
         </div>
+
+        <Card className="bg-gradient-surface border-border shadow-soc">
+          <CardHeader className="flex items-start justify-between gap-3">
+            <div className="space-y-1">
+              <CardTitle className="text-xl">Signal relationship graph</CardTitle>
+              <CardDescription>
+                Connected view of anomalies and their resulting model updates with live emphasis and hover states.
+              </CardDescription>
+            </div>
+            <Badge variant="outline" className="uppercase text-[11px]">Live</Badge>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="relative overflow-hidden rounded-xl border border-border bg-background/50 p-4">
+              <svg viewBox="0 0 220 220" className="h-[280px] w-full">
+                <defs>
+                  <radialGradient id="nodeGlow" cx="50%" cy="50%" r="70%">
+                    <stop offset="0%" stopColor="hsl(217 91% 60%)" stopOpacity="0.35" />
+                    <stop offset="70%" stopColor="hsl(217 91% 60%)" stopOpacity="0" />
+                  </radialGradient>
+                </defs>
+                <rect width="220" height="220" rx="14" fill="url(#nodeGlow)" opacity="0.35" />
+                {graphEdges.map((edge) => {
+                  const from = graphNodes.find((n) => n.id === edge.from);
+                  const to = graphNodes.find((n) => n.id === edge.to);
+                  if (!from || !to) return null;
+
+                  const total = graphNodes.length || 1;
+                  const angleFrom = (from.index / total) * Math.PI * 2;
+                  const angleTo = (to.index / total) * Math.PI * 2;
+                  const radius = 80;
+                  const cx = 110;
+                  const cy = 110;
+                  const x1 = cx + radius * Math.cos(angleFrom);
+                  const y1 = cy + radius * Math.sin(angleFrom);
+                  const x2 = cx + radius * Math.cos(angleTo);
+                  const y2 = cy + radius * Math.sin(angleTo);
+
+                  return (
+                    <g key={edge.id} className="transition-all duration-300">
+                      <line
+                        x1={x1}
+                        y1={y1}
+                        x2={x2}
+                        y2={y2}
+                        stroke="hsl(217 25% 65%)"
+                        strokeWidth={1.5}
+                        strokeDasharray="4 3"
+                        opacity={0.7}
+                      />
+                    </g>
+                  );
+                })}
+                {graphNodes.map((node) => {
+                  const total = graphNodes.length || 1;
+                  const angle = (node.index / total) * Math.PI * 2;
+                  const radius = 80;
+                  const cx = 110;
+                  const cy = 110;
+                  const x = cx + radius * Math.cos(angle);
+                  const y = cy + radius * Math.sin(angle);
+                  const isActive =
+                    selectedNode === node.id ||
+                    (!selectedNode && query && node.detail.toLowerCase().includes(query.toLowerCase()));
+
+                  const color =
+                    node.type === "update"
+                      ? "hsl(142 76% 36%)"
+                      : node.severity === "critical"
+                        ? "hsl(0 84% 60%)"
+                        : node.severity === "high"
+                          ? "hsl(38 92% 50%)"
+                          : "hsl(217 91% 60%)";
+
+                  return (
+                    <g
+                      key={node.id}
+                      className="cursor-pointer"
+                      onMouseEnter={() => setSelectedNode(node.id)}
+                      onMouseLeave={() => setSelectedNode(null)}
+                    >
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={isActive ? 9 : 7}
+                        fill={color}
+                        opacity={0.9}
+                        className="transition-all duration-200"
+                      />
+                      <circle
+                        cx={x}
+                        cy={y}
+                        r={isActive ? 16 : 12}
+                        fill={color}
+                        opacity={0.12}
+                        className="transition-all duration-300"
+                      />
+                      <text
+                        x={x}
+                        y={y - 14}
+                        textAnchor="middle"
+                        fontSize="9"
+                        fill="hsl(215 33% 92%)"
+                        className="pointer-events-none"
+                      >
+                        {node.label}
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
+            <div className="rounded-lg border border-border bg-background/60 p-3 transition">
+              {selectedNode ? (
+                (() => {
+                  const node = graphNodes.find((n) => n.id === selectedNode);
+                  if (!node) return null;
+                  return (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold">{node.label}</span>
+                        <Badge variant="outline" className="capitalize">
+                          {node.type}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{node.detail}</p>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  Hover nodes to spotlight their relationship details and keep the graph feeling alive.
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <Card className="bg-gradient-surface border-border shadow-soc">
@@ -399,7 +568,7 @@ export default function AIModelMonitoring() {
 
           <Card className="bg-gradient-surface border-border shadow-soc">
             <CardHeader className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between">
                 <div className="space-y-1">
                   <CardTitle className="text-xl">Model update timeline</CardTitle>
                   <CardDescription>
